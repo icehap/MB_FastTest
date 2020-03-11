@@ -14,17 +14,12 @@ def mkplot(path):
     plt.ylabel("Noise RMS [LSB]", ha='right', y=1.0)
     line = None
 
-    #filenames = [f.name for f in os.scandir(path) if f.is_file()]
     filenames = []
 
     pathdata = path + '/*.hdf5'
     filenames = glob.glob(pathdata)
 
-    #print (filenames) 
-
     x, y, yerr = mkDataSet(natsorted(filenames))
-
-    #print(f'{x} {y} {yerr}')
 
     plt.errorbar(x,y,yerr=yerr,capsize=2,fmt='o',ms=5,ecolor='black',markeredgecolor='black',color='w')
     plt.plot(x,y)
