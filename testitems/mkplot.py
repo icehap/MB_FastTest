@@ -16,23 +16,37 @@ def mkplot(path):
 
     filenames = []
 
-    pathdata = path + '/*.hdf5'
+    pathdata = path + '/*ch0*.hdf5'
     filenames = glob.glob(pathdata)
+    x0, y0, yerr0 = mkDataSet(natsorted(filenames))
+    plt.errorbar(x0,y0,yerr0,capsize=2,fmt='o',ms=5,ecolor='blue',markeredgecolor='blue',color='w')
+    plt.plot(x0,y0,color='blue',label='Ch0')
+    
+    pathdata = path + '/*ch1*.hdf5'
+    filenames = glob.glob(pathdata)
+    x1, y1, yerr1 = mkDataSet(natsorted(filenames))
+    plt.errorbar(x1,y1,yerr1,capsize=2,fmt='o',ms=5,ecolor='red',markeredgecolor='red',color='w')
+    plt.plot(x1,y1,color='red',label='Ch1')
 
-    x, y, yerr = mkDataSet(natsorted(filenames))
-
-    plt.errorbar(x,y,yerr=yerr,capsize=2,fmt='o',ms=5,ecolor='black',markeredgecolor='black',color='w')
-    plt.plot(x,y)
-
+    plt.legend()
     fig.canvas.draw()
     fig.canvas.flush_events()
     plt.pause(0.001)
     plt.savefig(path+'/DACscanPlot.pdf')
 
-    if min(y) < 2.5: 
-        return 1
+    retvalue = []
+    minvalues = [min(y0), min(y1)]
+    if min(y0) < 2.5:
+        retvalue.append(1)
     else:
-        return 0
+        retvalue.append(0)
+
+    if min(y1) < 2.5:
+        retvalue.append(1)
+    else:
+        retvalue.append(0)
+
+    return retvalue, minvalues
 
 def mkDataSet(filenames):
     x = []

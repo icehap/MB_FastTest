@@ -6,6 +6,7 @@ import os
 import sys
 import numpy as np
 import scope 
+from addparser_iceboot import AddParser
 
 def dacscan(parser, path='.'):
     (options, args) = parser.parse_args()
@@ -19,16 +20,17 @@ def dacscan(parser, path='.'):
     nevts = '10'
     nsamples = '500'
 
-    #dacvalue = np.linspace(12,48,37)
+    dacvalue = np.linspace(12,48,37)
     dacvalue = np.linspace(12,48,10)
     dacvalue10 = dacvalue.astype('int') * 1000 
 
     for i in range(len(dacvalue10)):
-        scope.main(parser,dacvalue10[i], path)
+        scope.main(parser,0,dacvalue10[i], path)
+        scope.main(parser,1,dacvalue10[i], path)
 
-    result = mkplot.mkplot(datapath)
+    result, minvalues = mkplot.mkplot(datapath)
 
-    return result
+    return result, minvalues
 
 
 if __name__ == "__main__":
