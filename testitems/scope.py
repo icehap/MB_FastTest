@@ -9,16 +9,23 @@ import matplotlib.pyplot as plt
 import time
 import sys
 import signal
+from addparser_iceboot import AddParser
 
 
-def main(parser, dacvalue, path):
+def main(parser, inchannel=-1, dacvalue=-1, path='.'):
     (options, args) = parser.parse_args()
 
     session = startIcebootSession(parser)
 
+    channel = 0
+    if inchannel>-1: 
+        channel = inchannel
+    else:
+        channel = int(options.channel)
+
     if (len(options.dacSettings) == 0) and (dacvalue > -1): 
         setchannel = 'A'
-        if options.channel == 1 : 
+        if channel == 1 : 
             setchannel = 'B'
         session.setDAC(setchannel,dacvalue)
         time.sleep(0.1)
@@ -29,7 +36,7 @@ def main(parser, dacvalue, path):
         print("Number of samples must be at least 16")
         sys.exit(1)
 
-    session.setDEggConstReadout(int(options.channel), 1, int(nSamples))
+    session.setDEggConstReadout(channel, 1, int(nSamples))
 
     plt.ion()
     plt.show()
@@ -41,13 +48,13 @@ def main(parser, dacvalue, path):
 
     if options.external:
         print("external")
-        session.startDEggExternalTrigStream(int(options.channel))
+        session.startDEggExternalTrigStream(channel)
         print("external")
     elif options.threshold is None:
-        session.startDEggSWTrigStream(int(options.channel), 
+        session.startDEggSWTrigStream(channel, 
             int(options.swTrigDelay))
     else:
-        session.startDEggThreshTrigStream(int(options.channel),
+        session.startDEggThreshTrigStream(channel,
             int(options.threshold))
 
     # define signal handler to end the stream on CTRL-C
@@ -81,7 +88,7 @@ def main(parser, dacvalue, path):
         xdata = [x for x in range(len(wf))]
 
         if dacvalue > -1:
-            filename = path + str(options.mbsnum) + '/dacscan_ch' + str(options.channel) + '_' + str(dacvalue) + '.hdf5'
+            filename = path + str(options.mbsnum) + '/dacscan_ch' + str(channel) + '_' + str(dacvalue) + '.hdf5'
         elif options.filename is None:
             raise ValueError('Please supply a filename to '
                              'save the data to!')
@@ -159,33 +166,9 @@ def main(parser, dacvalue, path):
     plt.close()
     return 
 
-def AddParser(parser):
-    parser.add_option("--mbsnum",dest="mbsnum",
-                      help="MB serial number (just for testing)",default="1-001")
-    parser.add_option("--channel", dest="channel",
-                      help="Waveform ADC channel", default="0")
-    parser.add_option("--samples", dest="samples", help="Number of samples "
-                               "per waveform",  default=256)
-    parser.add_option("--threshold", dest="threshold",
-                      help="Apply threshold trigger instead of CPU trigger "
-                           "and trigger at this level", default=None)
-    parser.add_option("--adcMin", dest="adcMin",
-                      help="Minimum ADC value to plot", default=None)
-    parser.add_option("--adcRange", dest="adcRange",
-                      help="Plot this many ADC counts above min",
-                      default=None)
-    parser.add_option("--swTrigDelay", dest="swTrigDelay",
-                      help="ms delay between software triggers",
-                      default=10)
-    parser.add_option("--external", dest="external", action="store_true",
-                      help="Use external trigger", default=False)
-    parser.add_option("--filename", dest="filename", default=None)
-    parser.add_option("--timeout", dest="timeout", default=10)
-    parser.add_option("--nevents", dest="nevents", default=50000)
-
 
 if __name__ == "__main__":
     parser = getParser()
     AddParser(parser)
-    main(parser,-1,'.')
+    main(parser,-1,-1,'.')
     sys.exit(0)
