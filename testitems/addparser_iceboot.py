@@ -23,3 +23,6 @@ def AddParser(parser):
     parser.add_option("--filename", dest="filename", default=None)
     parser.add_option("--timeout", dest="timeout", default=10)
     parser.add_option("--nevents", dest="nevents", default=10)
+    parser.add_option("--dacscanmode",dest="dsmode", 
+                      help="Set mode for DAC scan", default=3)
+    parser.add_option("--author",dest="author", default="R.~Nagai")
