@@ -118,10 +118,12 @@ def rep_dacscan(parser):
 \begin{figure}[h]
 \centering
 \includegraphics[width=.8\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanFFT0Plot.pdf}
-\subcaption{Channel 0}
+\caption{Channel 0 FFT plots at the DAC value where the noise RMS is minimum. }
+\end{figure}
+\begin{figure}[h]
+\centering
 \includegraphics[width=.8\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanFFT1Plot.pdf}
-\subcaption{Channel 1}
-\caption{FFT plots at the DAC value where the noise RMS is minimum. }
+\caption{Channel 1FFT plots at the DAC value where the noise RMS is minimum. }
 \end{figure}
     '''
 
@@ -217,7 +219,6 @@ def preamble(parser,snum):
 \usepackage{ascmac}
 \usepackage{fancybox}
 \usepackage{booktabs}
-\usepackage[subrefformat=parens]{subcaption}
 \usepackage{ifthen}
 \fancypagestyle{mypagestyle}{
 \renewcommand{\headrulewidth}{0pt}
