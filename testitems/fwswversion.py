@@ -23,7 +23,7 @@ def main(parser):
 
     print(f'Firmware {firmwarefilename} was installed successfully.')
 
-    return session.fpgaVersion(), session.softwareVersion(), session.flashLS()
+    return session.fpgaVersion(), session.softwareVersion(), session.flashLS(), session.softwareId()
 
 if __name__ == "__main__":
     parser = getParser()
