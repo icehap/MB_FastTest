@@ -3,6 +3,7 @@
 from iceboot.iceboot_session import getParser
 import codecs 
 import os 
+import sys
 
 import fwswversion
 import dacscan
@@ -19,6 +20,9 @@ def main():
     print (options.channel)
 
     MBserialnumber = options.mbsnum
+    if len(MBserialnumber.split('/')) > 1: 
+        print('Do not use "/" in the MB serial number. Exit.')
+        sys.exit(0)
 
     makereport(parser,MBserialnumber)
 
