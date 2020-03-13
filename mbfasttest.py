@@ -4,6 +4,8 @@ from iceboot.iceboot_session import getParser
 import codecs 
 import os 
 import sys
+import platform
+import datetime
 
 import fwswversion
 import dacscan
@@ -60,6 +62,7 @@ PASS = r'''{\begin{center} \checkbox{black!30!green} PASS \hspace{2ex} \checkbox
 FAIL = r'''{\begin{center} \checkbox{white} PASS \hspace{2ex} \checkbox{red} FAIL \end{center}}'''
 
 def rep_sensor(parser):
+    (options, args) = parser.parse_args()
     thresMin, thresMax, out, outbool = sensorcheck.main(parser) 
     
     SECTIONNAME = r'''\section{Slow Monitoring and Sensors}'''
@@ -74,11 +77,22 @@ def rep_sensor(parser):
 \caption{Slow Monitoring ADC \& Sensors Test Summary.}
 \begin{tabular}{lrclrc}
 \toprule 
-Sensor & \multicolumn{3}{c}{Criteria}  & Observed & Acceptance \\
+SLO ADC or Sensor & \multicolumn{3}{c}{Criteria}  & \multicolumn{1}{c}{Observed} & Acceptance \\
 \midrule ''' 
 
     omittest = [0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0]
     #omittest = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    if options.hven == 0: # HV0 enabled, HV1 disabled
+        omittest[8] = 0
+        omittest[9] = 0
+    elif options.hven == 1: # HV0 disabled, HV1 enabled
+        omittest[10] = 0
+        omittest[11] = 0
+    elif options.hven == 2: # HV0 enabled, HV1 enabled
+        omittest[8] = 0
+        omittest[9] = 0
+        omittest[10] = 0
+        omittest[11] = 0
 
     result = 1
     for i in range(len(out)):
@@ -169,19 +183,49 @@ Successfully installed the firmware from the flash memory on the mainboard.
 \begin{table}[h]
 \centering
 \caption{Test Configuration Summary.}
-\begin{tabular}{ccl}
+\begin{tabular}{lll}
 \toprule 
-Contents & Values & \multicolumn{1}{c}{Comments} \\ \midrule '''
+Contents & Values & Comments \\ \midrule '''
+    
+    flashLSoutput = str(flashLS[0]['Name']).split('_')
+    fnameinflash = ''
+    for i in range(len(flashLSoutput)):
+        fnameinflash += flashLSoutput[i]
+        if i+1 < len(flashLSoutput):
+            fnameinflash += r'\_'
+
+    ipcomments = ''
+    if str(options.host) != 'localhost':
+        ipcomments = 'Using Ethernet connection'
+    else:
+        ipcomments = 'Using Mini-FieldHub'
+
     Names  = ['Flash ID','FPGA Chip ID','Host IP Address', 'Port Number','FPGA FW Ver.', 'Iceboot SW Ver.']
     Values = [str(flashId), str(fpgaId), str(options.host), str(options.port), f'0x{fwVer:x}', f'{swVer:x}']
-    Comments = ['','','','', r'''File: \verb|'''+ flashLS[0]['Name'] +'|', 'ID: ' + str(swid) ]
+    Comments = ['','', ipcomments,'', 'File: ' + fnameinflash , 'ID: ' + str(swid) ]
 
     for i in range(len(Names)):
-        CONTENTS += Names[i] + ' & ' + Values[i] + ' & ' + Comments[i] + r'''\\'''
+        CONTENTS += Names[i] + ' & ' + Values[i] + ' &  '  + Comments[i] + r'''\\'''
         if i==1: 
             CONTENTS += r'''\midrule '''
 
+    hvcomments = ['HV0: Not connected, HV1: Not connected.','HV0: Connected, HV1: Not connected.', 'HV0: Not connected, HV1: Connected.', 'HV0: Connected, HV1: Connected.']
     CONTENTS += r'''
+\midrule 
+HV Boards & \multicolumn{2}{l}{''' + hvcomments[int(options.hven)+1] + r'''} \\ 
+Camera & Not connected. & \\ 
+\midrule
+OS & \multicolumn{2}{l}{'''
+    
+    platformoutput = platform.platform().split('_')
+    for i in range(len(platformoutput)):
+        CONTENTS += platformoutput[i]
+        if i+1 < len(platformoutput):
+            CONTENTS += r'\_'
+
+    CONTENTS += r'''}\\
+Python Ver. & \multicolumn{2}{l}{''' + sys.version + r'''}  \\
+Test Date & ''' + (datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") + r''' & \\
 \bottomrule
 \end{tabular}
 \end{table}'''
