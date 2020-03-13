@@ -24,5 +24,7 @@ def AddParser(parser):
     parser.add_option("--timeout", dest="timeout", default=10)
     parser.add_option("--nevents", dest="nevents", default=10)
     parser.add_option("--dacscanmode",dest="dsmode", 
-                      help="Set mode for DAC scan", default=3)
+                      help="Set mode for DAC scan", default=5)
     parser.add_option("--author",dest="author", default="Anonymous User")
+    parser.add_option("--hven",dest="hven",
+                      help="HV attached or not", default=-1)
