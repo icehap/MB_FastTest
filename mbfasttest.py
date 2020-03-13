@@ -70,7 +70,7 @@ def rep_sensor(parser):
 \caption{Slow Monitoring ADC \& Sensors Test Summary.}
 \begin{tabular}{lrclrc}
 \toprule 
-Sensor & \multicolumn{3}{c}{Criterion}  & Observed & Acceptance \\
+Sensor & \multicolumn{3}{c}{Criteria}  & Observed & Acceptance \\
 \midrule ''' 
 
     omittest = [0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0]
@@ -118,12 +118,12 @@ def rep_dacscan(parser):
 \begin{figure}[h]
 \centering
 \includegraphics[width=.8\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanFFT0Plot.pdf}
-\caption{Channel 0 FFT plots at the DAC value where the noise RMS is minimum. }
+\caption{Channel 0 FFT plot at the DAC value where the noise RMS is minimum. }
 \end{figure}
 \begin{figure}[h]
 \centering
 \includegraphics[width=.8\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanFFT1Plot.pdf}
-\caption{Channel 1FFT plots at the DAC value where the noise RMS is minimum. }
+\caption{Channel 1 FFT plot at the DAC value where the noise RMS is minimum. }
 \end{figure}
     '''
 
@@ -139,7 +139,7 @@ def rep_dacscan(parser):
 \caption{DAC Scan Summary.}
 \begin{tabular}{ccrc}
 \toprule
-ADC Ch\# & Criterion & \multicolumn{1}{c}{Min(Obs)} & Acceptance \\ 
+ADC Ch\# & Criteria & \multicolumn{1}{c}{Min(Obs)} & Acceptance \\ 
 \midrule '''
         TABLEEND = r'''
 \bottomrule
@@ -157,7 +157,7 @@ ADC Ch\# & Criterion & \multicolumn{1}{c}{Min(Obs)} & Acceptance \\
 
 def getConfInfo(parser):
     (options, args) = parser.parse_args()
-    fwVer, swVer, flashLS, swid = fwswversion.main(parser)
+    fwVer, swVer, flashLS, swid, fpgaId, flashId = fwswversion.main(parser)
 
     CONTENTS = r'''
 \section{Test Configuration} 
@@ -168,12 +168,14 @@ Successfully installed the firmware from the flash memory on the mainboard.
 \begin{tabular}{ccl}
 \toprule 
 Contents & Values & \multicolumn{1}{c}{Comments} \\ \midrule '''
-    Names  = ['Host IP Address', 'Port Number', 'FPGA FW Version', 'Iceboot SW Version']
-    Values = [str(options.host), str(options.port), f'0x{fwVer:x}', f'{swVer:x}']
-    Comments = ['','', r'''filename: \verb|'''+ flashLS[0]['Name'] +'|', 'softwareID: ' + str(swid) ]
+    Names  = ['Flash ID','FPGA Chip ID','Host IP Address', 'Port Number','FPGA FW Ver.', 'Iceboot SW Ver.']
+    Values = [str(flashId), str(fpgaId), str(options.host), str(options.port), f'0x{fwVer:x}', f'{swVer:x}']
+    Comments = ['','','','', r'''File: \verb|'''+ flashLS[0]['Name'] +'|', 'ID: ' + str(swid) ]
 
     for i in range(len(Names)):
         CONTENTS += Names[i] + ' & ' + Values[i] + ' & ' + Comments[i] + r'''\\'''
+        if i==1: 
+            CONTENTS += r'''\midrule '''
 
     CONTENTS += r'''
 \bottomrule
