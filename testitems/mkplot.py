@@ -7,7 +7,8 @@ import glob
 from natsort import natsorted
 
 def mkplot(path):
-    plt.rcParams['font.family'] = 'Liberation Sans'
+    plt.rcParams['font.sans-serif'] = ['Arial','Liberation Sans']
+    plt.rcParams['font.family'] = 'sans-serif'
     plt.rcParams['axes.labelsize'] = 14
     plt.rcParams['xtick.labelsize'] = 12
     plt.rcParams['ytick.labelsize'] = 12
