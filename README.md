@@ -20,11 +20,11 @@ $ python3 mbfasttest.py --host=[host IP] --port=[port] --mbsnum=[S/N] --author=[
 - `--host=[IP address]`
 - `--port=[port number]`
 - `--mbsnum=[serial number]`
- - ** The serial number can be set manually, not depends on the hardware ID, software ID, and so on.
+   - The serial number can be set manually, not depends on the hardware ID, software ID, and so on.
 - `--author=[author name]`
 - `--dacscanmode=[mode]`
- - ** This sets the precision of the DAC scan. From 0 to 8 is available. The #points increases if set larger number. Default is 5, corresponding to 10 scan points. 
+   - This sets the precision of the DAC scan. From 0 to 8 is available. The #points increases if set larger number. Default is 5, corresponding to 10 scan points. 
 - `--samples=[number of sampling bins in a waveform]` 
- - ** Default: 256 (same as the standard iceboot procedure)
+   - Default: 256 (same as the standard iceboot procedure)
 - `--nevents=[number of events for each point of the DAC scan]` 
- - ** Default: 10
+   - Default: 10
