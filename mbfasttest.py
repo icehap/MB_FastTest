@@ -118,7 +118,7 @@ SLO ADC or Sensor & \multicolumn{3}{c}{Criteria}  & \multicolumn{1}{c}{Observed}
 
 
 def rep_dacscan(parser):
-    path = 'testitems/'
+    path = 'testitems'
     results, minvalues = dacscan.dacscan(parser,path)
     (options, args) = parser.parse_args()
 

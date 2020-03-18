@@ -88,7 +88,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.'):
         xdata = [x for x in range(len(wf))]
 
         if dacvalue > -1:
-            filename = path + str(options.mbsnum) + '/dacscan_ch' + str(channel) + '_' + str(dacvalue) + '.hdf5'
+            filename = path + '/' + str(options.mbsnum) + '/dacscan_ch' + str(channel) + '_' + str(dacvalue) + '.hdf5'
         elif options.filename is None:
             raise ValueError('Please supply a filename to '
                              'save the data to!')
