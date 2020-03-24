@@ -19,7 +19,7 @@ def mkplot(path):
 
     filenames = []
 
-    chcolors = ['blue','red']
+    chcolors = ['b','r']
     ydata = []
     minFFTs = []
 
@@ -27,8 +27,7 @@ def mkplot(path):
         pathdata = path + '/dacscan*ch'+ str(channel) +'*.hdf5'
         filenames = glob.glob(pathdata)
         x, y, yerr, minFFT = mkDataSet(natsorted(filenames))
-        plt.errorbar(x,y,yerr,capsize=2,fmt='o',ms=5,ecolor=chcolors[channel],markeredgecolor=chcolors[channel],color='w')
-        plt.plot(x,y,color=chcolors[channel],label='Ch'+str(channel))
+        plt.errorbar(x,y,yerr,capsize=2,marker='o',ms=5,ls='solid',color=chcolors[channel],label=f'Ch{channel}',zorder=channel+1)
         ydata.append(y)
         minFFTs.append(minFFT)
     
@@ -170,12 +169,23 @@ def plotSetting(plt):
     plt.rcParams['ytick.left'] = True
     plt.rcParams['ytick.right'] = True
     plt.rcParams['axes.grid'] = True
-    plt.rcParams['grid.color'] = 'gray'
-    plt.rcParams['grid.linewidth'] = 0.4
+    plt.rcParams['grid.color'] = 'black'
+    plt.rcParams['grid.linewidth'] = 0.8
     plt.rcParams['grid.linestyle'] = ':'
     plt.rcParams['legend.fancybox'] = False
     plt.rcParams['figure.subplot.right'] = 0.95
     plt.rcParams['figure.subplot.top'] = 0.95
+    plt.rcParams['legend.edgecolor'] = 'white'
+    plt.rcParams['legend.framealpha'] = 1.0
+    plt.rcParams['xtick.minor.visible'] = True
+    plt.rcParams['ytick.minor.visible'] = True
+    plt.rcParams['xtick.minor.width'] = 0.8
+    plt.rcParams['ytick.minor.width'] = 0.8
+    plt.rcParams['xtick.major.size'] = 7
+    plt.rcParams['ytick.major.size'] = 8
+    plt.rcParams['xtick.minor.size'] = 3.5
+    plt.rcParams['ytick.minor.size'] = 4
+    plt.rcParams['axes.axisbelow'] = True
 
 
 if __name__ == "__main__":
