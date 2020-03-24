@@ -7,79 +7,60 @@ import glob
 from natsort import natsorted
 
 def mkplot(path):
-    plt.rcParams['font.sans-serif'] = ['Arial','Liberation Sans']
-    plt.rcParams['font.family'] = 'sans-serif'
-    plt.rcParams['axes.labelsize'] = 14
-    plt.rcParams['xtick.labelsize'] = 12
-    plt.rcParams['ytick.labelsize'] = 12
-    plt.rcParams['xtick.direction'] = 'in'
-    plt.rcParams['ytick.direction'] = 'in'
-    plt.rcParams['xtick.top'] = True
-    plt.rcParams['xtick.bottom'] = True
-    plt.rcParams['ytick.left'] = True
-    plt.rcParams['ytick.right'] = True
-    plt.rcParams['axes.grid'] = True
-    plt.rcParams['grid.color'] = 'gray'
-    plt.rcParams['grid.linewidth'] = 0.4
-    plt.rcParams['grid.linestyle'] = ':'
-    plt.rcParams['legend.fancybox'] = False
-    plt.rcParams['figure.subplot.right'] = 0.95
-    plt.rcParams['figure.subplot.top'] = 0.95
-
+    plotSetting(plt)
 
     plt.ion()
     plt.show()
 
     # Noise RMS Distribution 
     fig = plt.figure()
-    plt.xlabel("Mean [LSB]", ha='right', x=1.0)
+    plt.xlabel("Baseline Mean [LSB]", ha='right', x=1.0)
     plt.ylabel("Noise RMS [LSB]", ha='right', y=1.0)
 
     filenames = []
 
-    pathdata = path + '/*ch0*.hdf5'
-    filenames = glob.glob(pathdata)
-    x0, y0, yerr0, minFFT0 = mkDataSet(natsorted(filenames))
-    plt.errorbar(x0,y0,yerr0,capsize=2,fmt='o',ms=5,ecolor='blue',markeredgecolor='blue',color='w')
-    plt.plot(x0,y0,color='blue',label='Ch0')
-    
-    pathdata = path + '/*ch1*.hdf5'
-    filenames = glob.glob(pathdata)
-    x1, y1, yerr1, minFFT1 = mkDataSet(natsorted(filenames))
-    plt.errorbar(x1,y1,yerr1,capsize=2,fmt='o',ms=5,ecolor='red',markeredgecolor='red',color='w')
-    plt.plot(x1,y1,color='red',label='Ch1')
+    chcolors = ['b','r']
+    ydata = []
+    minFFTs = []
 
+    plt.axhline(2.5,ls='-.', color='magenta',zorder=0)
+
+    for channel in range(2):
+        pathdata = path + '/dacscan*ch'+ str(channel) +'*.hdf5'
+        filenames = glob.glob(pathdata)
+        x, y, yerr, minFFT = mkDataSet(natsorted(filenames))
+        plt.errorbar(x,y,yerr,capsize=2,marker='o',ms=5,ls='solid',color=chcolors[channel],label=f'Ch{channel}',zorder=channel+1)
+        ydata.append(y)
+        minFFTs.append(minFFT)
+    
+    ymax = 8
+    if ymax < max(y)+max(yerr): 
+        ymax = (max(y)+max(yerr))+1
+    plt.ylim(0,ymax)
     plt.legend()
     fig.canvas.draw()
     fig.canvas.flush_events()
     plt.pause(0.001)
     plt.savefig(path+'/DACscanPlot.pdf')
 
-    # FFT for ch0
-    fig = plt.figure()
-    plt.xlabel("Frequency [MHz]", ha='right', x=1.0)
-    plt.ylabel("Amplitude [LSB]", ha='right', y=1.0)
-    plt.yscale('log')
-    plt.plot(minFFT0[0],minFFT0[1],color='blue',label='Ch0')
-    plt.xlim(0,120)
-    plt.legend()
-    fig.canvas.draw()
-    fig.canvas.flush_events()
-    plt.pause(0.001)
-    plt.savefig(path+'/DACscanFFT0Plot.pdf')
+    y0 = ydata[0]
+    y1 = ydata[1]
 
-    # FFT for ch1 
-    fig = plt.figure()
-    plt.xlabel("Frequency [MHz]", ha='right', x=1.0)
-    plt.ylabel("Amplitude [LSB]", ha='right', y=1.0)
-    plt.yscale('log')
-    plt.plot(minFFT1[0],minFFT1[1],color='red',label='Ch1')
-    plt.xlim(0,120)
-    plt.legend()
-    fig.canvas.draw()
-    fig.canvas.flush_events()
-    plt.pause(0.001)
-    plt.savefig(path+'/DACscanFFT1Plot.pdf')
+
+    # FFT plot for each channel
+    for channel in range(2):
+        minFFT = minFFTs[channel]
+        fig = plt.figure()
+        plt.xlabel("Frequency [MHz]", ha='right', x=1.0)
+        plt.ylabel("Apmlitude [LSB]", ha='right', y=1.0)
+        plt.yscale('log')
+        plt.plot(minFFT[0],minFFT[1],color=chcolors[channel],label=f'Ch{channel}')
+        plt.xlim(0,120)
+        plt.legend()
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+        plt.pause(0.001)
+        plt.savefig(path+'/DACscanFFT'+str(channel)+'Plot.pdf')
 
     
     retvalue = []
@@ -156,19 +137,22 @@ def getArrRMS(array):
     return rms
 
 def getFFTWF(waveform):
-    fq = np.linspace(0,240,len(waveform))
+    opf = 240 # operation frequency in MHz
+
+    fq = np.linspace(0,opf,len(waveform))
 
     F = np.fft.fft(waveform)
     F_abs = np.abs(F)
     F_abs_amp = F_abs / len(waveform) * 2
     F_abs_amp[0] = F_abs_amp[0] / 2
 
+    # FFT filtered 
     F2 = np.copy(F)
-    fc = 60
+    fc = 60 # oscillation frequency
     df = 2
     F2[(fq>fc-df) & (fq<fc+df)] = 0
     F2[(fq>2*fc-df) & (fq<2*fc+df)] = 0
-    F2[(fq>240-fc-df) & (fq<240-fc+df)] = 0
+    F2[(fq>opf-fc-df) & (fq<opf-fc+df)] = 0
     F2_abs = np.abs(F2)
     F2_abs_amp = F2_abs / len(waveform) *2 
     F2_abs_amp[0] = F2_abs_amp[0] / 2
@@ -177,6 +161,38 @@ def getFFTWF(waveform):
     F2_ifft_real = F2_ifft.real
 
     return [fq[:int(len(waveform)/2)+1], F_abs_amp[:int(len(waveform)/2)+1], F2_abs_amp[:int(len(waveform)/2)+1], F2_ifft_real]
+
+def plotSetting(plt):
+    plt.rcParams['font.sans-serif'] = ['Arial','Liberation Sans']
+    plt.rcParams['font.family'] = 'sans-serif'
+    plt.rcParams['axes.labelsize'] = 14
+    plt.rcParams['xtick.labelsize'] = 12
+    plt.rcParams['ytick.labelsize'] = 12
+    plt.rcParams['xtick.direction'] = 'in'
+    plt.rcParams['ytick.direction'] = 'in'
+    plt.rcParams['xtick.top'] = True
+    plt.rcParams['xtick.bottom'] = True
+    plt.rcParams['ytick.left'] = True
+    plt.rcParams['ytick.right'] = True
+    plt.rcParams['axes.grid'] = True
+    plt.rcParams['grid.color'] = 'black'
+    plt.rcParams['grid.linewidth'] = 0.8
+    plt.rcParams['grid.linestyle'] = ':'
+    plt.rcParams['legend.fancybox'] = False
+    plt.rcParams['figure.subplot.right'] = 0.95
+    plt.rcParams['figure.subplot.top'] = 0.95
+    plt.rcParams['legend.edgecolor'] = 'white'
+    plt.rcParams['legend.framealpha'] = 1.0
+    plt.rcParams['xtick.minor.visible'] = True
+    plt.rcParams['ytick.minor.visible'] = True
+    plt.rcParams['xtick.minor.width'] = 0.8
+    plt.rcParams['ytick.minor.width'] = 0.8
+    plt.rcParams['xtick.major.size'] = 7
+    plt.rcParams['ytick.major.size'] = 8
+    plt.rcParams['xtick.minor.size'] = 3.5
+    plt.rcParams['ytick.minor.size'] = 4
+    plt.rcParams['axes.axisbelow'] = True
+    plt.rcParams['figure.figsize'] = [6.4,4.0]
 
 
 if __name__ == "__main__":

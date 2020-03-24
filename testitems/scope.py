@@ -12,7 +12,7 @@ import signal
 from addparser_iceboot import AddParser
 
 
-def main(parser, inchannel=-1, dacvalue=-1, path='.'):
+def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0):
     (options, args) = parser.parse_args()
 
     session = startIcebootSession(parser)
@@ -23,10 +23,11 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.'):
     else:
         channel = int(options.channel)
 
+    setchannel = 'A'
+    if channel == 1:
+        setchannel = 'B'
+
     if (len(options.dacSettings) == 0) and (dacvalue > -1): 
-        setchannel = 'A'
-        if channel == 1 : 
-            setchannel = 'B'
         session.setDAC(setchannel,dacvalue)
         time.sleep(0.1)
     
@@ -46,10 +47,20 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.'):
     plt.ylabel("ADC Count")
     line = None
 
+    if feplsr > 0:
+        session.setDAC(setchannel,30000)
+        if int(nSamples) > 128:
+            session.setDEggConstReadout(channel, 4, int(nSamples))
+        session.setDAC('D',feplsr)
+        time.sleep(0.1)
+        session.enableFEPulser(channel,4)
+
     if options.external:
         print("external")
         session.startDEggExternalTrigStream(channel)
         print("external")
+    elif feplsr > 0: 
+        session.startDEggThreshTrigStream(channel,7950)
     elif options.threshold is None:
         session.startDEggSWTrigStream(channel, 
             int(options.swTrigDelay))
@@ -61,6 +72,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.'):
     def signal_handler(*args):
         print('\nEnding waveform stream...')
         session.endStream()
+        session.disableFEPulser(channel)
         print('Done')
         sys.exit(1)
 
@@ -88,7 +100,9 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.'):
         xdata = [x for x in range(len(wf))]
 
         if dacvalue > -1:
-            filename = path + str(options.mbsnum) + '/dacscan_ch' + str(channel) + '_' + str(dacvalue) + '.hdf5'
+            filename = path + '/' + str(options.mbsnum) + '/dacscan_ch' + str(channel) + '_' + str(dacvalue) + '.hdf5'
+        elif feplsr > 0:
+            filename = path + '/' + str(options.mbsnum) + '/plscalib_ch' + str(channel) + '_' + str(feplsr) + '.hdf5'
         elif options.filename is None:
             raise ValueError('Please supply a filename to '
                              'save the data to!')
@@ -159,6 +173,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.'):
         if i >= int(options.nevents):
             print("Reached end of run - exiting...")
             session.endStream()
+            session.disableFEPulser(channel)
             print('Done')
             break
         

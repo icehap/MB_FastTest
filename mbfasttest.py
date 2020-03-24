@@ -118,7 +118,7 @@ SLO ADC or Sensor & \multicolumn{3}{c}{Criteria}  & \multicolumn{1}{c}{Observed}
 
 
 def rep_dacscan(parser):
-    path = 'testitems/'
+    path = 'testitems'
     results, minvalues = dacscan.dacscan(parser,path)
     (options, args) = parser.parse_args()
 
@@ -127,7 +127,7 @@ def rep_dacscan(parser):
     FIGURE = r'''
 \begin{figure}[h]
 \centering
-\includegraphics[width=.8\textwidth]{''' + path + '/' + str(options.mbsnum) + '''/DACscanPlot.pdf}
+\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + '''/DACscanPlot.pdf}
 \caption{DAC scan plot.}
 \end{figure}
     '''
@@ -135,12 +135,12 @@ def rep_dacscan(parser):
     FIGURE2 = r'''
 \begin{figure}[h]
 \centering
-\includegraphics[width=.8\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanFFT0Plot.pdf}
+\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanFFT0Plot.pdf}
 \caption{Channel 0 FFT plot at the DAC value where the noise RMS is minimum. }
 \end{figure}
 \begin{figure}[h]
 \centering
-\includegraphics[width=.8\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanFFT1Plot.pdf}
+\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanFFT1Plot.pdf}
 \caption{Channel 1 FFT plot at the DAC value where the noise RMS is minimum. }
 \end{figure}
     '''
