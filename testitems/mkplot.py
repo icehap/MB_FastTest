@@ -14,7 +14,7 @@ def mkplot(path):
 
     # Noise RMS Distribution 
     fig = plt.figure()
-    plt.xlabel("Mean [LSB]", ha='right', x=1.0)
+    plt.xlabel("Baseline Mean [LSB]", ha='right', x=1.0)
     plt.ylabel("Noise RMS [LSB]", ha='right', y=1.0)
 
     filenames = []
@@ -22,6 +22,8 @@ def mkplot(path):
     chcolors = ['b','r']
     ydata = []
     minFFTs = []
+
+    plt.axhline(2.5,ls='-.', color='magenta',zorder=0)
 
     for channel in range(2):
         pathdata = path + '/dacscan*ch'+ str(channel) +'*.hdf5'
@@ -31,6 +33,10 @@ def mkplot(path):
         ydata.append(y)
         minFFTs.append(minFFT)
     
+    ymax = 8
+    if ymax < max(y)+max(yerr): 
+        ymax = (max(y)+max(yerr))+1
+    plt.ylim(0,ymax)
     plt.legend()
     fig.canvas.draw()
     fig.canvas.flush_events()
@@ -186,6 +192,7 @@ def plotSetting(plt):
     plt.rcParams['xtick.minor.size'] = 3.5
     plt.rcParams['ytick.minor.size'] = 4
     plt.rcParams['axes.axisbelow'] = True
+    plt.rcParams['figure.figsize'] = [6.4,4.0]
 
 
 if __name__ == "__main__":
