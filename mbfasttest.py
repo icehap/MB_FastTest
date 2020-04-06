@@ -11,6 +11,7 @@ import fwswversion
 import dacscan
 import scope
 import sensorcheck
+import pulserCalib
 from addparser_iceboot import AddParser
 
 def main():
@@ -40,6 +41,7 @@ def makereport(parser,snum):
     finalacc *= sensorbool
     dacscanreport, dacscanbool = rep_dacscan(parser)
     finalacc *= dacscanbool
+    pulserreport = rep_pulser(parser)
 
     f = codecs.open(ofilename,'w', 'utf-8')
     f.write(preamble(parser,snum))
@@ -49,6 +51,7 @@ def makereport(parser,snum):
     f.write(inforeport)
     f.write(sensorreport)
     f.write(dacscanreport)
+    f.write(pulserreport)
     ### above
     
     f.write(endconts())
@@ -60,6 +63,7 @@ def makereport(parser,snum):
 
 PASS = r'''{\begin{center} \checkbox{black!30!green} PASS \hspace{2ex} \checkbox{white} FAIL \end{center}}'''
 FAIL = r'''{\begin{center} \checkbox{white} PASS \hspace{2ex} \checkbox{red} FAIL \end{center}}'''
+
 
 def rep_sensor(parser):
     (options, args) = parser.parse_args()
@@ -116,6 +120,23 @@ SLO ADC or Sensor & \multicolumn{3}{c}{Criteria}  & \multicolumn{1}{c}{Observed}
 
     return CONTENTS, result
 
+def rep_pulser(parser):
+    path = 'testitems'
+    results, minvalues = pulserCalib.pulserCalib(parser,path)
+    (options, args) = parser.parse_args()
+
+    SECTIONNAME = r'''\section{AFE Pulser Calibration}'''
+
+    FIGURE = r'''
+\begin{figure}[h]
+\centering
+\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + '''/PlsrCalibPlot.pdf}
+\caption{AFE pulser calibration plot.}
+\end{figure}
+    '''
+    CONTENTS = SECTIONNAME + FIGURE
+
+    return CONTENTS
 
 def rep_dacscan(parser):
     path = 'testitems'
