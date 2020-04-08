@@ -33,13 +33,34 @@ def pulserCalib(parser, path='.'):
     dacvalue = np.array([10,15,20,25,30,35,40,45,50,55,60,65])
     dacvalue10 = dacvalue * 1000
 
+    threshold0 = getThreshold(parser,0,path)
+    threshold1 = getThreshold(parser,1,path)
+
+    print(f'th0: {threshold0}, th1: {threshold1}')
+
     for i in range(len(dacvalue10)):
-        scope.main(parser,0,-1,path,dacvalue10[i])
-        scope.main(parser,1,-1,path,dacvalue10[i])
+        scope.main(parser,0,-1,path,dacvalue10[i],threshold0)
+        scope.main(parser,1,-1,path,dacvalue10[i],threshold1)
 
     result, minvalues = mkplot_pc(datapath)
 
     return result, minvalues
+
+
+def getThreshold(parser, channel, path):
+    (options, args) = parser.parse_args()
+
+    snum = options.mbsnum
+    datapath = path + '/' + snum
+
+    filename = datapath + '/dacscan_ch' + str(channel) + '_30000.hdf5'
+    
+    if not os.path.exists(filename): 
+        scope.main(parser,channel,30000,path)
+
+    x_1,y_1,yerr_1, baseline = getData(filename)
+
+    return baseline + 20
 
 
 def mkplot_pc(path):
@@ -86,7 +107,7 @@ def mkDataSet(filenames):
     yerr = []
 
     for i in range(len(filenames)):
-        x_1,y_1,yerr_1 = getData(filenames[i])
+        x_1,y_1,yerr_1, baseline = getData(filenames[i])
         x.append(x_1)
         y.append(y_1)
         yerr.append(yerr_1)
@@ -116,7 +137,7 @@ def getData(filename):
     
     f.close()
 
-    return x, np.mean(y), np.mean(yerr)
+    return x, np.mean(y), np.mean(yerr), baseline
 
 if __name__ == "__main__":
     parser = getParser()

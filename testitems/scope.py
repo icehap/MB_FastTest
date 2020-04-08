@@ -12,7 +12,7 @@ import signal
 from addparser_iceboot import AddParser
 
 
-def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0):
+def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=7950):
     (options, args) = parser.parse_args()
 
     session = startIcebootSession(parser)
@@ -60,7 +60,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0):
         session.startDEggExternalTrigStream(channel)
         print("external")
     elif feplsr > 0: 
-        session.startDEggThreshTrigStream(channel,7950)
+        session.startDEggThreshTrigStream(channel,threshold)
     elif options.threshold is None:
         session.startDEggSWTrigStream(channel, 
             int(options.swTrigDelay))
