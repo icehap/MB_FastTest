@@ -44,7 +44,7 @@ def main(parser):
             output = readSloAdcChannel(session, ch)
         outputs.append(output)
         value = 0
-        if targetMin[ch] <= output <= targetMax[ch]:
+        if targetMin[ch] <= float(output) <= targetMax[ch]:
             value = 1
         print (f'{targetMin[ch]} <= {float(output)} <= {targetMax[ch]} : {value}')
         outbool.append(value)
