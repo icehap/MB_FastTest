@@ -6,6 +6,7 @@ import os
 import sys
 import platform
 import datetime
+import time
 
 import fwswversion
 import dacscan
@@ -27,23 +28,36 @@ def main():
         print('Do not use "/" in the MB serial number. Exit.')
         sys.exit(0)
 
-    makereport(parser,MBserialnumber)
+    unixtime = int(time.time())
+    index = 0
+    prepath = 'results/FT_' + str(MBserialnumber) + '_' + str(unixtime) + '_'
+    path = prepath + str(index)
 
-    os.system("rm *.aux *.log")
+    while os.path.isdir(path): 
+        index = index + 1 
+        path = prepath + str(index)
+    
+    print(f'=== File path is: {path}. ===')
+    os.system('mkdir -p ' + path)
 
-def makereport(parser,snum): 
+    makereport(parser,MBserialnumber,path)
+
+    os.system("rm " + path + "/*.aux " + path + "/*.log")
+
+def makereport(parser,snum,path='.'): 
     ofilename = 'test_' + snum + '.tex'
+    ofpath = path + '/' + ofilename
 
     inforeport = getConfInfo(parser)
 
     finalacc = 1
     sensorreport, sensorbool = rep_sensor(parser)
     finalacc *= sensorbool
-    dacscanreport, dacscanbool = rep_dacscan(parser)
+    dacscanreport, dacscanbool = rep_dacscan(parser,path)
     finalacc *= dacscanbool
-    pulserreport = rep_pulser(parser)
+    pulserreport = rep_pulser(parser,path)
 
-    f = codecs.open(ofilename,'w', 'utf-8')
+    f = codecs.open(ofpath,'w', 'utf-8')
     f.write(preamble(parser,snum))
     f.write(beginconts(finalacc))
     
@@ -57,8 +71,8 @@ def makereport(parser,snum):
     f.write(endconts())
     f.close()
 
-    os.system('pdflatex ' + ofilename)
-    os.system('pdflatex ' + ofilename)
+    os.system('pdflatex -output-directory ' + path + ' ' + ofilename)
+    os.system('pdflatex -output-directory ' + path + ' ' + ofilename)
 
 
 PASS = r'''{\begin{center} \checkbox{black!30!green} PASS \hspace{2ex} \checkbox{white} FAIL \end{center}}'''
@@ -120,8 +134,7 @@ SLO ADC or Sensor & \multicolumn{3}{c}{Criteria}  & \multicolumn{1}{c}{Observed}
 
     return CONTENTS, result
 
-def rep_pulser(parser):
-    path = 'testitems'
+def rep_pulser(parser,path='testitems'):
     results, minvalues = pulserCalib.pulserCalib(parser,path)
     (options, args) = parser.parse_args()
 
@@ -138,8 +151,7 @@ def rep_pulser(parser):
 
     return CONTENTS
 
-def rep_dacscan(parser):
-    path = 'testitems'
+def rep_dacscan(parser,path='testitems'):
     results, minvalues = dacscan.dacscan(parser,path)
     (options, args) = parser.parse_args()
 
@@ -163,6 +175,19 @@ def rep_dacscan(parser):
 \centering
 \includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanFFT1Plot.pdf}
 \caption{Channel 1 FFT plot at the DAC value where the noise RMS is minimum. }
+\end{figure}
+    '''
+
+    FIGURE2 =  FIGURE2 + r'''
+\begin{figure}[h]
+\centering
+\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanMFFT0Plot.pdf}
+\caption{Channel 0 FFT plot at the DAC value where the noise RMS is maximum. }
+\end{figure}
+\begin{figure}[h]
+\centering
+\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanMFFT1Plot.pdf}
+\caption{Channel 1 FFT plot at the DAC value where the noise RMS is maximum. }
 \end{figure}
     '''
 
@@ -208,7 +233,7 @@ Successfully installed the firmware from the flash memory on the mainboard.
 \toprule 
 Contents & Values & Comments \\ \midrule '''
     
-    flashLSoutput = str(flashLS[0]['Name']).split('_')
+    flashLSoutput = str(flashLS[len(flashLS)-1]['Name']).split('_')
     fnameinflash = ''
     for i in range(len(flashLSoutput)):
         fnameinflash += flashLSoutput[i]
