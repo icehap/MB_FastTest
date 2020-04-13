@@ -22,16 +22,18 @@ def mkplot(path):
     chcolors = ['b','r']
     ydata = []
     minFFTs = []
+    maxFFTs = []
 
     plt.axhline(2.5,ls='-.', color='magenta',zorder=0)
 
     for channel in range(2):
         pathdata = path + '/dacscan*ch'+ str(channel) +'*.hdf5'
         filenames = glob.glob(pathdata)
-        x, y, yerr, minFFT = mkDataSet(natsorted(filenames))
+        x, y, yerr, minFFT, maxFFT = mkDataSet(natsorted(filenames))
         plt.errorbar(x,y,yerr,capsize=2,marker='o',ms=5,ls='solid',color=chcolors[channel],label=f'Ch{channel}',zorder=channel+1)
         ydata.append(y)
         minFFTs.append(minFFT)
+        maxFFTs.append(maxFFT)
     
     ymax = 8
     if ymax < max(y)+max(yerr): 
@@ -62,7 +64,21 @@ def mkplot(path):
         plt.pause(0.001)
         plt.savefig(path+'/DACscanFFT'+str(channel)+'Plot.pdf')
 
-    
+    # Max FFT plot
+    for channel in range(2):
+        maxFFT = maxFFTs[channel]
+        fig = plt.figure()
+        plt.xlabel("Frequency [MHz]", ha='right', x=1.0)
+        plt.ylabel("Apmlitude [LSB]", ha='right', y=1.0)
+        plt.yscale('log')
+        plt.plot(maxFFT[0],maxFFT[1],color=chcolors[channel],label=f'Ch{channel}')
+        plt.xlim(0,120)
+        plt.legend()
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+        plt.pause(0.001)
+        plt.savefig(path+'/DACscanMFFT'+str(channel)+'Plot.pdf')
+
     retvalue = []
     
     miny0 = 1000
@@ -101,8 +117,9 @@ def mkDataSet(filenames):
         FFTs.append(FFTs_1)
 
     minFFT = FFTs[y.index(min(y))]
+    maxFFT = FFTs[y.index(max(y))]
 
-    return x, y, yerr, minFFT
+    return x, y, yerr, minFFT, maxFFT
     
 
 def getData(filename):

@@ -23,7 +23,7 @@ def pulserCalib(parser, path='.'):
 
     os.system('mkdir -p ' + datapath)
 
-    modes = [1,2,3,4,6,9,12,18,36] # divisors of 36 (=48-12)
+    modes = [1,2,3,4,6,9,12,18,36,72] # divisors of 36 (=48-12)
     mode = modes[1] + 1
     if int(options.dsmode) < len(modes):
         mode = modes[int(options.dsmode)] + 1
@@ -124,7 +124,10 @@ def getData(filename):
 
     nsamples = len(waveforms[0])
 
-    x = int((filename.split('_')[2]).split('.')[0]) 
+    spfilen = filename.split('/')
+    fn = spfilen[len(spfilen)-1]
+
+    x = int((fn.split('_')[2]).split('.')[0]) 
 
     y = []
     yerr = []
