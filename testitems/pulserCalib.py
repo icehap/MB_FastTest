@@ -30,11 +30,13 @@ def pulserCalib(parser, path='.'):
 
     #dacvalue = np.linspace(12,48,mode)
     #dacvalue10 = dacvalue.astype('int') * 1000 
-    dacvalue = np.array([10,15,20,25,30,35,40,45,50,55,60,65])
+    dacvalue = np.array([5,10,15,20,25,30,35,40,45,50,55,60,65])
     dacvalue10 = dacvalue * 1000
 
-    threshold0 = getThreshold(parser,0,path)
-    threshold1 = getThreshold(parser,1,path)
+    bsset = 30000
+    thresset = 20
+    threshold0 = getThreshold(parser,0,bsset,thresset,path)
+    threshold1 = getThreshold(parser,1,bsset,thresset,path)
 
     print(f'th0: {threshold0}, th1: {threshold1}')
 
@@ -47,20 +49,22 @@ def pulserCalib(parser, path='.'):
     return result, minvalues
 
 
-def getThreshold(parser, channel, path):
+def getThreshold(parser, channel, baselineset, thresholdset, path):
     (options, args) = parser.parse_args()
+
+    testRun = 10
 
     snum = options.mbsnum
     datapath = path + '/' + snum
 
-    filename = datapath + '/dacscan_ch' + str(channel) + '_30000.hdf5'
+    filename = datapath + '/dacscan_ch' + str(channel) + '_' + str(baselineset) + '.hdf5'
     
     if not os.path.exists(filename): 
-        scope.main(parser,channel,30000,path)
+        scope.main(parser,channel,baselineset,path,testRun=testRun)
 
-    x_1,y_1,yerr_1, baseline = getData(filename)
+    x_1,y_1,yerr_1, baseline, waveform = getData(filename)
 
-    return baseline + 20
+    return baseline + thresholdset
 
 
 def mkplot_pc(path):
@@ -83,18 +87,35 @@ def mkplot_pc(path):
         pathdata = path + '/plscalib*ch' + str(channel) + '*.hdf5'
         filenames = glob.glob(pathdata) 
 
-        x, y, yerr = mkDataSet(natsorted(filenames))
+        x, y, yerr, wf = mkDataSet(natsorted(filenames))
         popt, pcov = curve_fit(pol1, x, y, sigma=yerr)
 
-        plt.plot(x,pol1(x,popt[0],popt[1]),ls='solid',color=chcolors[channel],zorder=stackorder)
+        fitx = np.arange(0,70000,1000)
+        plt.plot(fitx,pol1(fitx,popt[0],popt[1]),ls='dashed',color=chcolors[channel],zorder=stackorder)
         stackorder += 1 
         plt.errorbar(x,y,yerr,capsize=2,marker='o',ms=5,color=chcolors[channel],elinewidth=1,linewidth=0,label=f'Ch{channel}',zorder=stackorder)
         stackorder += 1
     
+    plt.xlim(0,70000)
+    plt.ylim(0,560)
     plt.legend()
     fig.canvas.draw()
     plt.pause(0.001)
     plt.savefig(path+'/PlsrCalibPlot.pdf')
+
+    fig = plt.figure()
+    plt.xlabel("Sampling Bins", ha='right', x=1.0)
+    plt.ylabel("ADC counts [LSB]", ha='right', y=1.0)
+    waveform = wf[len(wf)-1] 
+    wfx = np.arange(len(waveform))
+    plt.plot(wfx, waveform, ls='solid', color='red') 
+    maxx = 256
+    if (len(waveform) < 256): 
+        maxx = len(waveform)
+    plt.xlim(0,maxx)
+    fig.canvas.draw()
+    plt.pause(0.001)
+    plt.savefig(path+'/PlsrCalib_WF.pdf')
 
     return 0, 0 
 
@@ -105,14 +126,16 @@ def mkDataSet(filenames):
     x = []
     y = []
     yerr = []
+    wf = []
 
     for i in range(len(filenames)):
-        x_1,y_1,yerr_1, baseline = getData(filenames[i])
+        x_1, y_1, yerr_1, baseline, waveform = getData(filenames[i])
         x.append(x_1)
         y.append(y_1)
         yerr.append(yerr_1)
+        wf.append(waveform)
 
-    return x, y, yerr
+    return x, y, yerr, wf
 
 def getData(filename):
     f = tables.open_file(filename)
@@ -140,7 +163,7 @@ def getData(filename):
     
     f.close()
 
-    return x, np.mean(y), np.mean(yerr), baseline
+    return x, np.mean(y), np.mean(yerr), baseline, waveform
 
 if __name__ == "__main__":
     parser = getParser()

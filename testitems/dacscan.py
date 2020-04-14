@@ -17,9 +17,6 @@ def dacscan(parser, path='.'):
 
     os.system('mkdir -p ' + datapath)
 
-    nevts = '10'
-    nsamples = '500'
-
     modes = [1,2,3,4,6,9,12,18,36,72] # divisors of 36 (=48-12)
     mode = modes[1] + 1
     if int(options.dsmode) < len(modes):
