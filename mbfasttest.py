@@ -147,6 +147,14 @@ def rep_pulser(parser,path='testitems'):
 \caption{AFE pulser calibration plot.}
 \end{figure}
     '''
+    FIGURE = FIGURE + r'''
+\begin{figure}[h]
+\centering
+\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + '''/PlsrCalib_WF.pdf}
+\caption{Waveform example with the FE pulse.}
+\end{figure}
+    '''
+
     CONTENTS = SECTIONNAME + FIGURE
 
     return CONTENTS

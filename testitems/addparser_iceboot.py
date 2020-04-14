@@ -28,3 +28,5 @@ def AddParser(parser):
     parser.add_option("--author",dest="author", default="Anonymous User")
     parser.add_option("--hven",dest="hven",
                       help="HV attached or not", default=-1)
+    parser.add_option("--hvv",dest="hvv",
+                      help="HV values for both channels", default=0)

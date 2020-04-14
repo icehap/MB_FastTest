@@ -7,15 +7,20 @@ import numpy as np
 import tables
 import matplotlib.pyplot as plt
 import time
+import os
 import sys
 import signal
 from addparser_iceboot import AddParser
 
 
-def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=7950):
+def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, testRun=0):
     (options, args) = parser.parse_args()
 
     session = startIcebootSession(parser)
+
+    nevents = int(options.nevents)
+    if testRun > 0: 
+        nevents = testRun
 
     channel = 0
     if inchannel>-1: 
@@ -43,9 +48,16 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=7950):
     plt.show()
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    plt.xlabel("Waveform Bin")
-    plt.ylabel("ADC Count")
+    plt.xlabel("Waveform Bin",ha='right',x=1.0)
+    plt.ylabel("ADC Count",ha='right',y=1.0)
     line = None
+
+    if options.hvv > 0:
+        session.setDEggHV(channel,hvv)
+        session.enableHV(channel)
+        time.sleep(0.1)
+        HVobs = session.readSloADC_HVS_Voltage(channel)
+        print(f'Observed HV Supply Voltage for channel {channel}: {HVobs[3]} V.')
 
     if feplsr > 0:
         session.setDAC(setchannel,30000)
@@ -56,17 +68,15 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=7950):
         session.enableFEPulser(channel,4)
 
     if options.external:
-        print("external")
         session.startDEggExternalTrigStream(channel)
-        print("external")
     elif feplsr > 0: 
         session.startDEggThreshTrigStream(channel,threshold)
+    elif threshold > 0: 
+        session.startDEggThreshTrigStream(channel,threshold)
     elif options.threshold is None:
-        session.startDEggSWTrigStream(channel, 
-            int(options.swTrigDelay))
+        session.startDEggSWTrigStream(channel, int(options.swTrigDelay))
     else:
-        session.startDEggThreshTrigStream(channel,
-            int(options.threshold))
+        session.startDEggThreshTrigStream(channel, int(options.threshold))
 
     # define signal handler to end the stream on CTRL-C
     def signal_handler(*args):
@@ -80,9 +90,6 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=7950):
 
     i = 0
     while (True):
-        if i%100 == 0:
-            print('Event#{0}:'.format(i))
-
         try:
             readout = parseTestWaveform(session.readWFMFromStream())
         except IOError:
@@ -107,7 +114,9 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=7950):
             raise ValueError('Please supply a filename to '
                              'save the data to!')
         else:
-            filename = options.filename
+            if not os.path.isdir(path + '/' + str(options.mbsnum)): 
+                os.system('mkdir -p ' + path)
+            filename = path + '/' + str(options.mbsnum) + '/' + options.filename
 
         # Prepare hdf5 file
         if i == 0:
@@ -158,22 +167,20 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=7950):
             line.set_ydata(wf)
         if (options.adcMin is None or options.adcRange is None):
             wfrange = (max(wf) - min(wf))
-            plt.axis([0, len(wf),
-                      max(wf) - wfrange * 1.2, min(wf) + wfrange * 1.2])
+            plt.axis([0, len(wf), max(wf) - wfrange * 1.2, min(wf) + wfrange * 1.2])
         else:
-            plt.axis([0, len(wf), int(options.adcMin),
-                      int(options.adcMin) + int(options.adcRange)])
+            plt.axis([0, len(wf), int(options.adcMin), int(options.adcMin) + int(options.adcRange)])
         fig.canvas.draw()
-        #if i < 100:
-        #    plt.savefig(f'figs/waveform_example_{i}.pdf')
         fig.canvas.flush_events()
         #plt.pause(0.001)
         time.sleep(0.001)
 
-        if i >= int(options.nevents):
+        if i >= nevents:
             print("Reached end of run - exiting...")
             session.endStream()
             session.disableFEPulser(channel)
+            session.disableHV(channel)
+            session.setDEggHV(channel,0)
             print('Done')
             break
         
