@@ -52,8 +52,8 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     plt.ylabel("ADC Count",ha='right',y=1.0)
     line = None
 
-    if options.hvv > 0:
-        session.setDEggHV(channel,hvv)
+    if int(options.hvv) > 0:
+        session.setDEggHV(channel,int(options.hvv))
         session.enableHV(channel)
         time.sleep(0.1)
         HVobs = session.readSloADC_HVS_Voltage(channel)
