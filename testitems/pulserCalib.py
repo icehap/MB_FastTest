@@ -52,7 +52,7 @@ def pulserCalib(parser, path='.'):
 def getThreshold(parser, channel, baselineset, thresholdset, path):
     (options, args) = parser.parse_args()
 
-    testRun = 10
+    testRun = 50
 
     snum = options.mbsnum
     datapath = path + '/' + snum

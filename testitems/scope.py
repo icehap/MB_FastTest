@@ -53,9 +53,11 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     line = None
 
     if int(options.hvv) > 0:
+        if int(nSamples) > 128:
+            session.setDEggConstReadout(channel, 4, int(nSamples))
         session.setDEggHV(channel,int(options.hvv))
         session.enableHV(channel)
-        time.sleep(0.1)
+        time.sleep(1)
         HVobs = session.readSloADC_HVS_Voltage(channel)
         print(f'Observed HV Supply Voltage for channel {channel}: {HVobs} V.')
 
@@ -67,15 +69,20 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
         time.sleep(0.1)
         session.enableFEPulser(channel,4)
 
-    if options.external:
+    if options.external and testRun==0:
+        print('Notice: This is external trigger mode.')
         session.startDEggExternalTrigStream(channel)
     elif feplsr > 0: 
+        print('Notice: This is FE pulser mode.')
         session.startDEggThreshTrigStream(channel,threshold)
     elif threshold > 0: 
+        print('Notice: This is threshold trigger mode.')
         session.startDEggThreshTrigStream(channel,threshold)
     elif options.threshold is None:
+        print('Notice: This is software trigger mode.')
         session.startDEggSWTrigStream(channel, int(options.swTrigDelay))
     else:
+        print('Notice: This is threshold trigger mode.')
         session.startDEggThreshTrigStream(channel, int(options.threshold))
 
     # define signal handler to end the stream on CTRL-C
@@ -89,13 +96,16 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     signal.signal(signal.SIGINT, signal_handler)
 
     i = 0
+    index = 0
     while (True):
         try:
-            readout = parseTestWaveform(session.readWFMFromStream())
+            readout = parseTestWaveform(session.readWFMFromStream(timeout=int(options.timeout)))
         except IOError:
             print('Timeout! Ending waveform stream and exiting')
             session.endStream()
-            break
+            index = index + 1
+            beginWFstream(session, options, channel, testRun, threshold)
+            continue
 
         # Check for timeout
         if readout is None:
@@ -111,15 +121,16 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
         elif feplsr > 0:
             filename = path + '/' + str(options.mbsnum) + '/plscalib_ch' + str(channel) + '_' + str(feplsr) + '.hdf5'
         elif options.filename is None:
-            raise ValueError('Please supply a filename to '
-                             'save the data to!')
+            raise ValueError('Please supply a filename to save the data to!')
         else:
-            if not os.path.isdir(path + '/' + str(options.mbsnum)): 
-                os.system('mkdir -p ' + path)
+            odir = path + '/' + str(options.mbsnum)
+            if not os.path.isdir(odir): 
+                os.system('mkdir -p ' + odir)
             filename = path + '/' + str(options.mbsnum) + '/' + options.filename
 
         # Prepare hdf5 file
-        if i == 0:
+        #if i == 0:
+        if not os.path.isfile(filename):
             class Event(tables.IsDescription):
                 event_id = tables.Int32Col()
                 time = tables.Float32Col(
@@ -179,8 +190,8 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
             print("Reached end of run - exiting...")
             session.endStream()
             session.disableFEPulser(channel)
-            session.disableHV(channel)
-            session.setDEggHV(channel,0)
+            #session.disableHV(channel)
+            #session.setDEggHV(channel,0)
             print('Done')
             break
         
@@ -188,6 +199,22 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     plt.close()
     return 
 
+def beginWFstream(session, options, channel, testRun, threshold):
+    if options.external and testRun==0:
+        print('Notice: This is external trigger mode.')
+        session.startDEggExternalTrigStream(channel)
+    elif feplsr > 0: 
+        print('Notice: This is FE pulser mode.')
+        session.startDEggThreshTrigStream(channel,threshold)
+    elif threshold > 0: 
+        print('Notice: This is threshold trigger mode.')
+        session.startDEggThreshTrigStream(channel,threshold)
+    elif options.threshold is None:
+        print('Notice: This is software trigger mode.')
+        session.startDEggSWTrigStream(channel, int(options.swTrigDelay))
+    else:
+        print('Notice: This is threshold trigger mode.')
+        session.startDEggThreshTrigStream(channel, int(options.threshold))
 
 if __name__ == "__main__":
     parser = getParser()
