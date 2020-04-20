@@ -76,7 +76,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
         print('Notice: This is FE pulser mode.')
         session.startDEggThreshTrigStream(channel,threshold)
     elif threshold > 0: 
-        print('Notice: This is threshold trigger mode.')
+        print(f'Notice: This is threshold trigger mode with threshold:{threshold}.')
         session.startDEggThreshTrigStream(channel,threshold)
     elif options.threshold is None:
         print('Notice: This is software trigger mode.')

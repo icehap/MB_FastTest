@@ -17,12 +17,13 @@ def dacscan(parser, path='.'):
 
     os.system('mkdir -p ' + datapath)
 
-    modes = [1,2,3,4,6,9,12,18,36,72] # divisors of 36 (=48-12)
+    #modes = [1,2,3,4,6,9,12,18,36,72] # divisors of 36 (=48-12)
+    modes = [1,2,4,8,16,32,64,128,256] # divisors of 64 
     mode = modes[1] + 1
     if int(options.dsmode) < len(modes):
         mode = modes[int(options.dsmode)] + 1
 
-    dacvalue = np.linspace(12,48,mode)
+    dacvalue = np.linspace(0,64,mode)
     dacvalue10 = dacvalue * 1000 
 
     for i in range(len(dacvalue10)):

@@ -57,7 +57,7 @@ def thresSpeCurve(parser, path='.'):
     baseline = 0
     baseline = getThreshold(parser, channel, 30000, 0, path)
     print(f'Threshold: {baseline}')
-    scope.main(parser,channel,-1,path,-1,baseline)
+    scope.main(parser,channel,path=path,threshold=12000)
 
     getSpeCurve(parser, channel, datapath, baseline)
 
