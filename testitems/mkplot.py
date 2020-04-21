@@ -100,6 +100,8 @@ def mkplot(path):
     else:
         retvalue.append(0)
 
+    plt.close('all')
+
     return retvalue, minvalues
 
 def mkDataSet(filenames):
@@ -110,14 +112,20 @@ def mkDataSet(filenames):
 
     for i in range(len(filenames)):
         x_1, y_1, yerr_1, FFTs_1 = getData(filenames[i])
+        
+        if y_1==0: 
+            continue
 
         x.append(x_1)
         y.append(y_1)
         yerr.append(yerr_1)
         FFTs.append(FFTs_1)
-
-    minFFT = FFTs[y.index(min(y))]
-    maxFFT = FFTs[y.index(max(y))]
+    
+    minFFT = FFTs
+    maxFFT = FFTs
+    if len(y)>0:
+        minFFT = FFTs[y.index(min(y))]
+        maxFFT = FFTs[y.index(max(y))]
 
     return x, y, yerr, minFFT, maxFFT
     

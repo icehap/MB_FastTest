@@ -11,13 +11,24 @@ import os
 import sys
 import signal
 from addparser_iceboot import AddParser
+from loadFPGA import loadFPGA
 
 
 def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, testRun=0):
     (options, args) = parser.parse_args()
 
+    print('Start the session.')
     session = startIcebootSession(parser)
-
+    trial = 0
+    while session.fpgaVersion()==65535:
+        session.close()
+        print('Session closed.')
+        loadFPGA(parser)
+        trial = trial + 1
+        print (trial)
+        print('Re-start the session.')
+        session = startIcebootSession(parser)
+    
     nevents = int(options.nevents)
     if testRun > 0: 
         nevents = testRun
@@ -99,7 +110,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     index = 0
     while (True):
         try:
-            readout = parseTestWaveform(session.readWFMFromStream(timeout=int(options.timeout)))
+            readout = parseTestWaveform(session.readWFMFromStream())
         except IOError:
             print('Timeout! Ending waveform stream and exiting')
             session.endStream()
@@ -192,11 +203,15 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
             session.disableFEPulser(channel)
             #session.disableHV(channel)
             #session.setDEggHV(channel,0)
+            session.close()
+            print('Session closed.')
             print('Done')
+            time.sleep(1.0)
             break
         
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     plt.close()
+    time.sleep(0.5)
     return 
 
 def beginWFstream(session, options, channel, testRun, threshold):
