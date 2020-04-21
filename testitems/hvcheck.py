@@ -12,7 +12,11 @@ def main(parser,path='.'):
 
     session = startIcebootSession(parser)
     
-    HVsettings = np.arange(0,800,100)
+    session.setDEggHV(0,0)
+    session.setDEggHV(1,0)
+    time.sleep(5)
+    
+    HVsettings = np.arange(0,750,50)
 
     for channel in range(2):
         hvvobs0, hvcobs0, hvverr0, hvcerr0 = getLists(session,HVsettings,channel)
@@ -30,7 +34,7 @@ def main(parser,path='.'):
         ax2 = ax1.twinx()
         ax2.set_ylabel('Observed Value [$\mu$A]', ha='right', y=1.0, color='red')
         ax2.errorbar(HVsettings,hvcobs0,hvcerr0,fmt='o-',color='red',label=f'Ch{channel} current')
-        ax2.set_ylim(0,100)
+        ax2.set_ylim(0,50)
         ax2.spines['right'].set_color('red')
         ax2.tick_params(which='both',axis='y', colors='red')
 
