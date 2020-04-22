@@ -62,6 +62,14 @@ def main(parser):
 
     colors = ['blue','red']
 
+    xmean0 = []
+    ymean0 = []
+    yerr0 = []
+
+    xmean1 = []
+    ymean1 = []
+    yerr1 = []
+
     for i in range(len(dacvalue10)):
         fig = plt.figure()
         plt.xlabel("RMS Noise [LSB]",ha='right',x=1.0)
@@ -74,11 +82,28 @@ def main(parser):
             if len(y)==0: 
                 continue
             plt.hist(y,color=colors[channel],histtype="step",bins=100,range=(0,10),label=f'Ch{channel}')
+            if channel==0: 
+                xmean0.append(np.mean(x))
+                ymean0.append(np.mean(y))
+                yerr0.append(np.std(y))
+            elif channel==1:
+                xmean1.append(np.mean(x))
+                ymean1.append(np.mean(y))
+                yerr1.append(np.std(y))
+
         if nevts==0: 
             continue
         plt.xlim(0,10)
         plt.legend()
         plt.savefig(f'{path}/hist_{int(dacvalue10[i])}.pdf')
+
+    fig = plt.figure()
+    plt.xlabel("Baseline Mean [LSB]",ha='right',x=1.0)
+    plt.ylabel("$\sigma$(RMS noise dist.) [LSB]",ha='right',y=1.0)
+    plt.plot(xmean0,yerr0,color=colors[0],label='Ch0',marker="o")
+    plt.plot(xmean1,yerr1,color=colors[1],label='Ch1',marker="o")
+    plt.legend()
+    plt.savefig(f'{path}/Spread.pdf')
 
     
 if __name__ == "__main__":
