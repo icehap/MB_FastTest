@@ -115,7 +115,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
             print('Timeout! Ending waveform stream and exiting')
             session.endStream()
             index = index + 1
-            beginWFstream(session, options, channel, testRun, threshold)
+            beginWFstream(session, options, channel, testRun, threshold, feplsr)
             continue
 
         # Check for timeout
@@ -128,16 +128,16 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
         xdata = [x for x in range(len(wf))]
 
         if dacvalue > -1:
-            filename = path + '/' + str(options.mbsnum) + '/dacscan_ch' + str(channel) + '_' + str(dacvalue) + '.hdf5'
+            filename = f'{path}/{options.mbsnum}/dacscan_ch{channel}_{dacvalue}.hdf5'
         elif feplsr > 0:
-            filename = path + '/' + str(options.mbsnum) + '/plscalib_ch' + str(channel) + '_' + str(feplsr) + '.hdf5'
+            filename = f'{path}/{options.mbsnum}/plscalib_ch{channel}_{feplsr}.hdf5'
         elif options.filename is None:
             raise ValueError('Please supply a filename to save the data to!')
         else:
-            odir = path + '/' + str(options.mbsnum)
+            odir = f'{path}/{options.mbsnum}'
             if not os.path.isdir(odir): 
-                os.system('mkdir -p ' + odir)
-            filename = path + '/' + str(options.mbsnum) + '/' + options.filename
+                os.system(f'mkdir -p {odir}')
+            filename = f'{odir}/{options.filename}'
 
         # Prepare hdf5 file
         #if i == 0:
@@ -214,7 +214,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     time.sleep(0.5)
     return 
 
-def beginWFstream(session, options, channel, testRun, threshold):
+def beginWFstream(session, options, channel, testRun, threshold, feplsr):
     if options.external and testRun==0:
         print('Notice: This is external trigger mode.')
         session.startDEggExternalTrigStream(channel)
@@ -222,7 +222,7 @@ def beginWFstream(session, options, channel, testRun, threshold):
         print('Notice: This is FE pulser mode.')
         session.startDEggThreshTrigStream(channel,threshold)
     elif threshold > 0: 
-        print('Notice: This is threshold trigger mode.')
+        print(f'Notice: This is threshold trigger mode with threshold:{threshold}.')
         session.startDEggThreshTrigStream(channel,threshold)
     elif options.threshold is None:
         print('Notice: This is software trigger mode.')

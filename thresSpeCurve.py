@@ -15,14 +15,14 @@ from pulserCalib import getThreshold, getData
 def main(parser):
     (options, args) = parser.parse_args()
 
-    MBserialnumber = options.mbsnum
-    if len(MBserialnumber.split('/')) > 1:
+    MBsnum = options.mbsnum
+    if len(MBsnum.split('/')) > 1:
         print('Do not use "/" in the MB serial number. Exit.') 
         sys.exit(0)
 
     unixtime = int(time.time())
     index = 0 
-    prepath = 'results/SH_' + str(MBserialnumber) + '_' + str(unixtime) + '_'
+    prepath = f'results/SH_{MBsnum}_{unixtime}_'
     path = prepath + str(index)
 
     while os.path.isdir(path):
@@ -30,7 +30,7 @@ def main(parser):
         path = prepath + str(index)
 
     print(f'=== File path is: {path}. ===')
-    os.system('mkdir -p ' + path)
+    os.system(f'mkdir -p {path}')
 
     thresSpeCurve(parser, path)
 
@@ -45,9 +45,9 @@ def thresSpeCurve(parser, path='.'):
         print ('Quit.')
         return
 
-    datapath = path + '/' + snum
+    datapath = f'{path}/{snum}'
 
-    os.system('mkdir -p ' + datapath)
+    os.system(f'mkdir -p {datapath}')
 
     channel = int(options.channel)
 
@@ -76,18 +76,18 @@ def getSpeCurve(parser, channel, path, baseline):
     plt.xlabel("Integrated Charge [LSB]", ha='right', x=1.0)
     plt.ylabel("Entry",ha='right', y=1.0)
 
-    datapath = path + '/' + filename
+    datapath = f'{path}/{filename}'
 
     charges, avgwf = getIntCharges(datapath, baseline)
 
     plt.hist(charges, bins= 800, range=(-200, 600), color='blue', histtype="step", align="left")
 
     fig.canvas.draw()
-    plt.savefig(path+'/hist.pdf')
+    plt.savefig(f'{path}/hist.pdf')
 
     plt.ylim(0,50)
     fig.canvas.draw()
-    plt.savefig(path+'/histExpd.pdf')
+    plt.savefig(f'{path}/histExpd.pdf')
 
     fig = plt.figure()
     plt.xlabel("Sampling Bins", ha='right', x=1.0)
@@ -96,7 +96,7 @@ def getSpeCurve(parser, channel, path, baseline):
     x = np.arange(len(avgwf))
     plt.plot(x, avgwf, color='blue')
     plt.xlim(0,len(avgwf))
-    plt.savefig(path+'/avgwf.pdf')
+    plt.savefig(f'{path}/avgwf.pdf')
 
     return
 
