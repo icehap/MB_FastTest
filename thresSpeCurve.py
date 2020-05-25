@@ -15,14 +15,14 @@ from pulserCalib import getThreshold, getData
 def main(parser):
     (options, args) = parser.parse_args()
 
-    MBserialnumber = options.mbsnum
-    if len(MBserialnumber.split('/')) > 1:
+    MBsnum = options.mbsnum
+    if len(MBsnum.split('/')) > 1:
         print('Do not use "/" in the MB serial number. Exit.') 
         sys.exit(0)
 
     unixtime = int(time.time())
     index = 0 
-    prepath = 'results/SH_' + str(MBserialnumber) + '_' + str(unixtime) + '_'
+    prepath = f'results/SH_{MBsnum}_{unixtime}_'
     path = prepath + str(index)
 
     while os.path.isdir(path):
@@ -30,7 +30,7 @@ def main(parser):
         path = prepath + str(index)
 
     print(f'=== File path is: {path}. ===')
-    os.system('mkdir -p ' + path)
+    os.system(f'mkdir -p {path}')
 
     thresSpeCurve(parser, path)
 
@@ -45,23 +45,25 @@ def thresSpeCurve(parser, path='.'):
         print ('Quit.')
         return
 
-    datapath = path + '/' + snum
+    datapath = f'{path}/{snum}'
 
-    os.system('mkdir -p ' + datapath)
+    os.system(f'mkdir -p {datapath}')
 
     channel = int(options.channel)
 
     if channel < 0 or channel > 1: 
         return
 
-    threshold = getThreshold(parser, channel, 30000, 20, path)
-    scope.main(parser,channel,-1,path,-1,threshold)
+    baseline = 0
+    baseline = getThreshold(parser, channel, 30000, 0, path)
+    print(f'Threshold: {baseline}')
+    scope.main(parser,channel,path=path,threshold=12000)
 
-    getSpeCurve(parser, channel, datapath)
+    getSpeCurve(parser, channel, datapath, baseline)
 
     return
 
-def getSpeCurve(parser, channel, path): 
+def getSpeCurve(parser, channel, path, baseline): 
     (options, args) = parser.parse_args()
     filename = options.filename
 
@@ -74,19 +76,31 @@ def getSpeCurve(parser, channel, path):
     plt.xlabel("Integrated Charge [LSB]", ha='right', x=1.0)
     plt.ylabel("Entry",ha='right', y=1.0)
 
-    datapath = path + '/' + filename
+    datapath = f'{path}/{filename}'
 
-    charges = getIntCharges(datapath)
+    charges, avgwf = getIntCharges(datapath, baseline)
 
-    plt.hist(charges, bins= 400, range=(-100, 300), color='blue', histtype="step", align="left")
+    plt.hist(charges, bins= 800, range=(-200, 600), color='blue', histtype="step", align="left")
 
     fig.canvas.draw()
-    plt.pause(0.001)
-    plt.savefig(path+'/hist.pdf')
+    plt.savefig(f'{path}/hist.pdf')
+
+    plt.ylim(0,50)
+    fig.canvas.draw()
+    plt.savefig(f'{path}/histExpd.pdf')
+
+    fig = plt.figure()
+    plt.xlabel("Sampling Bins", ha='right', x=1.0)
+    plt.ylabel("ADC counts", ha='right', y=1.0)
+
+    x = np.arange(len(avgwf))
+    plt.plot(x, avgwf, color='blue')
+    plt.xlim(0,len(avgwf))
+    plt.savefig(f'{path}/avgwf.pdf')
 
     return
 
-def getIntCharges(filename): 
+def getIntCharges(filename, baseline): 
     f = tables.open_file(filename)
 
     data = f.get_node('/data')
@@ -100,12 +114,13 @@ def getIntCharges(filename):
 
     for i in range(len(waveforms)): 
         waveform = waveforms[i]
-        baseline = np.mean(waveform[0:120])
         subtWf = waveform - baseline
-        charge = sum(subtWf[125:135])
+        charge = sum(subtWf[190:210])
         charges.append(charge)
 
-    return charges  
+    avgwf = np.mean(waveforms, axis=0)
+
+    return charges, avgwf  
 
 if __name__ == "__main__":
     parser = getParser()
