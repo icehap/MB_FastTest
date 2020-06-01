@@ -46,7 +46,10 @@ def main(parser):
     for ch in range(17):
         output = 0
         if ch==16:
-            output = session.readPressure()
+            try: 
+                output = session.readPressure()
+            except IOError: 
+                output = -1
         else:
             output = readSloAdcChannel(session, ch)
         outputs.append(output)
