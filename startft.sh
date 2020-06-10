@@ -10,7 +10,7 @@ input=$(zenity --forms --title="Start Fast-Test" \
 
 echo $input 
 
-#source setup.sh 
+source setup.sh 
 
 python3 execute.py "$input"
 
