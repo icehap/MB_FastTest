@@ -39,8 +39,8 @@ def main():
     winmax = args.minimum + args.window
     bsstart = args.baselineEst
 
-    print ('Total #Events: {0}'.format(len(waveforms)))
-    print ('Setting... Window [{0}:{1}] and Pedestal start from {2}.\n'.format(winmin, winmax, bsstart))
+    print (f'Total #Events: {len(waveform)}')
+    print (f'Setting... Window [{winmin}:{winmax}] and Pedestal start from {bsstart}.\n')
 
     topdir = gDirectory.GetDirectory(gDirectory.GetPath())
     subdir = topdir.mkdir("Waveforms")
@@ -93,12 +93,12 @@ def main():
 
         hpk.Fill(max(waveform[winmin:winmax])-np.mean(waveform[bsstart:nsamples]))
 
-        hfft = TH1D('FFT{0}'.format(i),'FFT;Frequency [MHz];Amplitude [LSB]',int(len(fq)/2)+1,0,120+240/(nsamples-1))
+        hfft = TH1D(f'FFT{i}','FFT;Frequency [MHz];Amplitude [LSB]',int(len(fq)/2)+1,0,120+240/(nsamples-1))
         for j in range(int(len(F_abs_amp)/2.+1)):
             hfft.Fill(fq[j],F_abs_amp[j])
         #hfft.Draw("hist")
 
-        h2 = TH1D('w{0}'.format(i),'Waveform;Sampling Bin;ADC count',nsamples,0,nsamples)
+        h2 = TH1D(f'w{i}','Waveform;Sampling Bin;ADC count',nsamples,0,nsamples)
         for j in range(len(waveform)):
             h2.Fill(j,waveform[j])
         #h2.Draw("hist")

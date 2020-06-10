@@ -1,5 +1,5 @@
 # MB_FastTest
-Codes for the IceCube-Upgrade D-Egg Rev.4 mainboard Fast-Testing.
+Codes for the IceCube-Upgrade D-Egg Rev 4 mainboard Fast-Testing.
 
 The main script: mbfasttest.py includes all testing items. If run the code, the script takes the data from the mainboard, automatically analyzes the data, and then generates a report. 
 Available to use the same options as the iceboot. 

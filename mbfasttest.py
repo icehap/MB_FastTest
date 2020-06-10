@@ -23,14 +23,14 @@ def main():
     (options, args) = parser.parse_args()
     print (options.channel)
 
-    MBserialnumber = options.mbsnum
-    if len(MBserialnumber.split('/')) > 1: 
+    snum = options.mbsnum
+    if len(snum.split('/')) > 1: 
         print('Do not use "/" in the MB serial number. Exit.')
         sys.exit(0)
 
     unixtime = int(time.time())
     index = 0
-    prepath = 'results/FT_' + str(MBserialnumber) + '_' + str(unixtime) + '_'
+    prepath = f'results/FastTest/{snum}/{unixtime}_'
     path = prepath + str(index)
 
     while os.path.isdir(path): 
@@ -40,12 +40,12 @@ def main():
     print(f'=== File path is: {path}. ===')
     os.system('mkdir -p ' + path)
 
-    makereport(parser,MBserialnumber,path)
+    makereport(parser,snum,path)
 
-    os.system("rm " + path + "/*.aux " + path + "/*.log")
+    os.system(f'rm {path}/*.aux {path}/*.log')
 
 def makereport(parser,snum,path='.'): 
-    ofilename = 'test_' + snum + '.tex'
+    ofilename = f'test_{snum}.tex'
     ofpath = path + '/' + ofilename
 
     inforeport = getConfInfo(parser)
@@ -71,8 +71,8 @@ def makereport(parser,snum,path='.'):
     f.write(endconts())
     f.close()
 
-    os.system('pdflatex -output-directory ' + path + ' ' + ofilename)
-    os.system('pdflatex -output-directory ' + path + ' ' + ofilename)
+    os.system(f'pdflatex -output-directory {path} {ofilename}')
+    os.system(f'pdflatex -output-directory {path} {ofilename}')
 
 
 PASS = r'''{\begin{center} \checkbox{black!30!green} PASS \hspace{2ex} \checkbox{white} FAIL \end{center}}'''
