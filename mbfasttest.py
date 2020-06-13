@@ -13,6 +13,7 @@ import dacscan
 import scope
 import sensorcheck
 import pulserCalib
+import hvcheck
 from addparser_iceboot import AddParser
 
 def main():
@@ -45,6 +46,7 @@ def main():
     os.system(f'rm {path}/*.aux {path}/*.log')
 
 def makereport(parser,snum,path='.'): 
+    (options, args) = parser.parse_args()
     ofilename = f'test_{snum}.tex'
     ofpath = path + '/' + ofilename
 
@@ -66,6 +68,7 @@ def makereport(parser,snum,path='.'):
     f.write(sensorreport)
     f.write(dacscanreport)
     f.write(pulserreport)
+    f.write(put_figures(snum,hvcheck.main(parser,path),path))
     ### above
     
     f.write(endconts())
@@ -158,6 +161,24 @@ def rep_pulser(parser,path='testitems'):
     CONTENTS = SECTIONNAME + FIGURE
 
     return CONTENTS
+
+def put_figures(snum,figurenames,path='testitems'):
+    if len(figurenames) < 4: 
+        return ""
+    FIGURE = r'''
+\begin{figure}[h]
+\centering
+\includegraphics[width=.9\textwidth]{''' + f'{path}/{snum}/{figurenames[0]}' + r'''}
+\caption{''' + str(figurenames[1]) + r'''}
+\end{figure}
+\begin{figure}[h]
+\centering
+\includegraphics[width=.9\textwidth]{''' + f'{path}/{snum}/{figurenames[2]}' + r'''}
+\caption{''' + str(figurenames[3]) + '''}
+\end{figure}
+'''
+    return FIGURE
+    
 
 def rep_dacscan(parser,path='testitems'):
     results, minvalues = dacscan.dacscan(parser,path)

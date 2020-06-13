@@ -1,3 +1,3 @@
 #!/bin/bash
 
-gnome-terminal -e "./startft.sh"
+gnome-terminal --working-directory=$HOME/WorkSpace/tests/dev/FT_dev -e "./startft.sh"

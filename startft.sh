@@ -14,4 +14,4 @@ source setup.sh
 
 python3 execute.py "$input"
 
-zenity --info --title="Fast-Test" --text="Done!"
+zenity --info --title="Fast-Test" --text="Done!\nPlease check the result. If you observed any problems, run it again."

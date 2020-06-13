@@ -18,6 +18,8 @@ def main(parser,path='.'):
     
     HVsettings = np.arange(0,750,50)
 
+    datapath = f'{path}/{options.mbsnum}'
+
     for channel in range(2):
         hvvobs0, hvcobs0, hvverr0, hvcerr0 = getLists(session,HVsettings,channel)
 
@@ -45,7 +47,10 @@ def main(parser,path='.'):
     
         fig.canvas.draw()
         fig.canvas.flush_events()
-        plt.savefig(f'hv_{channel}.pdf')
+        plt.savefig(f'{datapath}/hv_{channel}.pdf')
+
+    return ['hv_0.pdf','Comparison between set and observed HV values for channel 0.', 
+            'hv_1.pdf','Comparison between set and observed HV values for channel 1.']
 
 def getLists(session, HVsettings, channel):
     hvvobs = []
