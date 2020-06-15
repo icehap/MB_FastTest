@@ -103,13 +103,13 @@ SLO ADC or Sensor & \multicolumn{3}{c}{Criteria}  & \multicolumn{1}{c}{Observed}
 
     omittest = [0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0]
     #omittest = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    if options.hven == 0: # HV0 enabled, HV1 disabled
+    if int(options.hven) == 0: # HV0 enabled, HV1 disabled
         omittest[8] = 0
         omittest[9] = 0
-    elif options.hven == 1: # HV0 disabled, HV1 enabled
+    elif int(options.hven) == 1: # HV0 disabled, HV1 enabled
         omittest[10] = 0
         omittest[11] = 0
-    elif options.hven == 2: # HV0 enabled, HV1 enabled
+    elif int(options.hven) == 2: # HV0 enabled, HV1 enabled
         omittest[8] = 0
         omittest[9] = 0
         omittest[10] = 0

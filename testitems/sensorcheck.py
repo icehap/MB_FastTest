@@ -3,6 +3,7 @@
 from iceboot.iceboot_session import getParser, startIcebootSession
 from addparser_iceboot import AddParser
 import numpy as np
+import time
 
 def main(parser):
     (options, args) = parser.parse_args()
@@ -31,17 +32,19 @@ def main(parser):
 
     #targetMax = [500,500,500,500,500,1.9,5000,60,2000,100,2000,100,1.2,1.45,2.6,3.4,2000]
     #targetMin = [  0,  0,  0,  0,  0,1.7,   0,10,   0,  0,   0,  0,1.0,1.25,2.4,3.2, 500]
-    targetMax = [1000,500,500,500,500,1.9,5000,35,205,200,205,200,1.2,1.45,2.6,3.4,1200]
-    targetMin = [  10, 10, 10, 10, 10,1.7,   0, 5,195,  0,195,  0,1.0,1.25,2.4,3.2, 900]
+    targetMax = [1000,500,500,500,500,1.9,5000,35,int(options.hvv)+5,200,int(options.hvv)+5,200,1.2,1.45,2.6,3.4,1200]
+    targetMin = [  10, 10, 10, 10, 10,1.7,   0, 5,int(options.hvv)-5,  0,int(options.hvv)-5,  0,1.0,1.25,2.4,3.2, 900]
 
     outputs = []
     outbool = []
 
-    session.setDEggHV(0, 200)
-    session.setDEggHV(1, 200)
+    session.setDEggHV(0, int(options.hvv))
+    session.setDEggHV(1, int(options.hvv))
 
     session.enableHV(0)
     session.enableHV(1)
+
+    time.sleep(5)
 
     for ch in range(17):
         output = 0
