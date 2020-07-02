@@ -21,4 +21,4 @@ source setup.sh
 
 python3 execute.py "$input" "$hvcheck"
 
-zenity --info --title="Fast-Test" --text="Done!\nPlease check the result. If you observed any problems, run it again."
+zenity --width=200 --info --title="Fast-Test" --text="Done!\nPlease check the result. If you observed any problems, run it again."

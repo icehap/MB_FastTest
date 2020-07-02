@@ -39,7 +39,7 @@ def main():
     winmax = args.minimum + args.window
     bsstart = args.baselineEst
 
-    print (f'Total #Events: {len(waveform)}')
+    print (f'Total #Events: {len(waveforms)}')
     print (f'Setting... Window [{winmin}:{winmax}] and Pedestal start from {bsstart}.\n')
 
     topdir = gDirectory.GetDirectory(gDirectory.GetPath())
