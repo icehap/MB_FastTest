@@ -15,14 +15,14 @@ from pulserCalib import getThreshold, getData
 def main(parser):
     (options, args) = parser.parse_args()
 
-    MBsnum = options.mbsnum
-    if len(MBsnum.split('/')) > 1:
+    snum = options.mbsnum
+    if len(snum.split('/')) > 1:
         print('Do not use "/" in the MB serial number. Exit.') 
         sys.exit(0)
 
     unixtime = int(time.time())
     index = 0 
-    prepath = f'results/SH_{MBsnum}_{unixtime}_'
+    prepath = f'results/SpeHist/{snum}/{unixtime}_'
     path = prepath + str(index)
 
     while os.path.isdir(path):
