@@ -151,6 +151,8 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
                     shape=np.asarray(xdata).shape)
                 waveform = tables.Float32Col(
                     shape=np.asarray(wf).shape)
+                timestamp = tables.Int64Col()
+                pc_time = tables.Float32Col()
 
             with tables.open_file(filename, 'w') as open_file:
                 table = open_file.create_table('/', 'data', Event)
