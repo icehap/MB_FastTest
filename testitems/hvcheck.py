@@ -66,12 +66,13 @@ def getLists(session, HVsettings, channel):
         
         hvvols = []
         hvcurs = []
-        for j in range(50):
+        for j in range(20):
             hvv = readSloAdcChannel(session,8+2*channel)
+            time.sleep(0.5)
             hvc = readSloAdcChannel(session,9+2*channel)
+            time.sleep(0.5)
             hvvols.append(hvv)
             hvcurs.append(hvc)
-            time.sleep(0.1)
 
         hvvobs.append(np.mean(hvvols))
         hvcobs.append(np.mean(hvcurs))
