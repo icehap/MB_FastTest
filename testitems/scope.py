@@ -127,6 +127,9 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
             continue
         xdata = [x for x in range(len(wf))]
 
+        timestamp = readout["timestamp"]
+        pc_time = time.time()
+
         if dacvalue > -1:
             filename = f'{path}/{options.mbsnum}/dacscan_ch{channel}_{dacvalue}.hdf5'
         elif feplsr > 0:
@@ -148,6 +151,8 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
                     shape=np.asarray(xdata).shape)
                 waveform = tables.Float32Col(
                     shape=np.asarray(wf).shape)
+                timestamp = tables.Int64Col()
+                pc_time = tables.Float32Col()
 
             with tables.open_file(filename, 'w') as open_file:
                 table = open_file.create_table('/', 'data', Event)
@@ -160,28 +165,12 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
             event['event_id'] = i
             event['time'] = np.asarray(xdata, dtype=np.float32)
             event['waveform'] = np.asarray(wf, dtype=np.float32)
+            event['timestamp'] = timestamp 
+            event['pc_time'] = pc_time 
             event.append()
             table.flush()
 
         i += 1
-
-        # File writing for inhomogenious waveforms (not so efficient)
-        '''
-        # Write to hdf5 file
-        TableLayout = []
-        TableLayout.append(('time', type(xdata[0]))
-        TableLayout.append(('waveform', type(wf[0]))
-
-        store = np.zeros((1,), dtype=TableLayout)
-        store['time'] = xdata
-        store['waveform'] = wf
-
-        evt_name = f'event{i}'
-        i += 1
-
-        with tables.open_file(filename, 'a') as open_file:
-            open_file.create_table('/', evt_name, store)
-        '''
 
         if not line:
             line, = ax.plot(xdata, wf, 'r-')

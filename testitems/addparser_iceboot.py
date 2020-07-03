@@ -2,7 +2,7 @@ from iceboot.iceboot_session import getParser
 
 def AddParser(parser):
     parser.add_option("--mbsnum",dest="mbsnum",
-                      help="MB serial number (just for testing)",default="Not-Available")
+                      help="MB serial number (just for testing)",default="Unknown")
     parser.add_option("--channel", dest="channel",
                       help="Waveform ADC channel", default="0")
     parser.add_option("--samples", dest="samples", help="Number of samples "

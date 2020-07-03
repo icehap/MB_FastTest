@@ -15,14 +15,14 @@ from pulserCalib import getThreshold, getData
 def main(parser):
     (options, args) = parser.parse_args()
 
-    MBsnum = options.mbsnum
-    if len(MBsnum.split('/')) > 1:
+    snum = options.mbsnum
+    if len(snum.split('/')) > 1:
         print('Do not use "/" in the MB serial number. Exit.') 
         sys.exit(0)
 
     unixtime = int(time.time())
     index = 0 
-    prepath = f'results/SH_{MBsnum}_{unixtime}_'
+    prepath = f'results/SpeHist/{snum}/{unixtime}_'
     path = prepath + str(index)
 
     while os.path.isdir(path):
@@ -38,7 +38,6 @@ def thresSpeCurve(parser, path='.'):
     (options, args) = parser.parse_args()
 
     snum = options.mbsnum
-    threshold = options.threshold
 
     if options.filename is None: 
         print ('Requires option: --filename.')
@@ -55,9 +54,15 @@ def thresSpeCurve(parser, path='.'):
         return
 
     baseline = 0
+    threshold = 0
     baseline = getThreshold(parser, channel, 30000, 0, path)
     print(f'Threshold: {baseline}')
-    scope.main(parser,channel,path=path,threshold=12000)
+    if options.threshold is None:
+        threshold = baseline
+    else : 
+        threshold = int(options.threshold)
+
+    scope.main(parser,channel,path=path,threshold=threshold)
 
     getSpeCurve(parser, channel, datapath, baseline)
 

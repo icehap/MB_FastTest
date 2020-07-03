@@ -6,22 +6,26 @@ import sys
 import time
 
 def main(parser):
-    (options, args) = parser.parse_args()
-
     session = startIcebootSession(parser)
-
     flashLS = session.flashLS()
 
     if len(flashLS) == 0: 
-        print('Firmware images not found. \n Please upload the appropriate image file into the flash memory before running test script. ')
+        print('Valid firmware images not found. \n' + 
+                'Please upload the correct image file into the flash memory before running the script. ')
         sys.exit(0)
 
     firmwarefilename = flashLS[len(flashLS)-1]['Name'] # latest uploaded file
+    print(f'Found valid firmware {firmwarefilename} in the flash memory.\n' + 
+            'Try to configure... ')
     
-    session.flashConfigureCycloneFPGA(firmwarefilename)
-    time.sleep(0.1)
-
-    print(f'Firmware {firmwarefilename} was installed successfully.')
+    try : 
+        session.flashConfigureCycloneFPGA(firmwarefilename)
+    except : 
+        print(f'Error during the loading firmware {firmwarefilename}. Exit.')
+        session.close()
+        sys.exit(0)
+    else :
+        time.sleep(0.1)
 
     FpgaVersion = session.fpgaVersion()
     SoftwareVersion = session.softwareVersion()
@@ -29,8 +33,8 @@ def main(parser):
     FpgaId = session.fpgaChipID()
     FlashId = session.flashID()
 
-    print (f'FPGA: {FpgaId} with FW Ver. {FpgaVersion}, Flash ID: {FlashId}, ') 
-    print (f'Software Version {SoftwareVersion} with ID {SoftwareId}. ')
+    print (f'FPGA: {FpgaId} with Firmware ver.{hex(FpgaVersion)}, Flash ID: {FlashId}, ' +  
+            f'Software ver.{hex(SoftwareVersion)} with ID {SoftwareId}. ')
 
     return FpgaVersion, SoftwareVersion, flashLS, SoftwareId, FpgaId, FlashId
 

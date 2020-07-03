@@ -13,6 +13,7 @@ import dacscan
 import scope
 import sensorcheck
 import pulserCalib
+import hvcheck
 from addparser_iceboot import AddParser
 
 def main():
@@ -23,14 +24,14 @@ def main():
     (options, args) = parser.parse_args()
     print (options.channel)
 
-    MBserialnumber = options.mbsnum
-    if len(MBserialnumber.split('/')) > 1: 
+    snum = options.mbsnum
+    if len(snum.split('/')) > 1: 
         print('Do not use "/" in the MB serial number. Exit.')
         sys.exit(0)
 
     unixtime = int(time.time())
     index = 0
-    prepath = 'results/FT_' + str(MBserialnumber) + '_' + str(unixtime) + '_'
+    prepath = f'results/FastTest/{snum}/{unixtime}_'
     path = prepath + str(index)
 
     while os.path.isdir(path): 
@@ -40,12 +41,13 @@ def main():
     print(f'=== File path is: {path}. ===')
     os.system('mkdir -p ' + path)
 
-    makereport(parser,MBserialnumber,path)
+    makereport(parser,snum,path)
 
-    os.system("rm " + path + "/*.aux " + path + "/*.log")
+    os.system(f'rm {path}/*.aux {path}/*.log')
 
 def makereport(parser,snum,path='.'): 
-    ofilename = 'test_' + snum + '.tex'
+    (options, args) = parser.parse_args()
+    ofilename = f'test_{snum}.tex'
     ofpath = path + '/' + ofilename
 
     inforeport = getConfInfo(parser)
@@ -66,13 +68,14 @@ def makereport(parser,snum,path='.'):
     f.write(sensorreport)
     f.write(dacscanreport)
     f.write(pulserreport)
+    f.write(put_figures(snum,hvcheck.main(parser,path),path))
     ### above
     
     f.write(endconts())
     f.close()
 
-    os.system('pdflatex -output-directory ' + path + ' ' + ofilename)
-    os.system('pdflatex -output-directory ' + path + ' ' + ofilename)
+    os.system(f'pdflatex -output-directory {path} {ofilename}')
+    os.system(f'pdflatex -output-directory {path} {ofilename}')
 
 
 PASS = r'''{\begin{center} \checkbox{black!30!green} PASS \hspace{2ex} \checkbox{white} FAIL \end{center}}'''
@@ -100,13 +103,13 @@ SLO ADC or Sensor & \multicolumn{3}{c}{Criteria}  & \multicolumn{1}{c}{Observed}
 
     omittest = [0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0]
     #omittest = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    if options.hven == 0: # HV0 enabled, HV1 disabled
+    if int(options.hven) == 0: # HV0 enabled, HV1 disabled
         omittest[8] = 0
         omittest[9] = 0
-    elif options.hven == 1: # HV0 disabled, HV1 enabled
+    elif int(options.hven) == 1: # HV0 disabled, HV1 enabled
         omittest[10] = 0
         omittest[11] = 0
-    elif options.hven == 2: # HV0 enabled, HV1 enabled
+    elif int(options.hven) == 2: # HV0 enabled, HV1 enabled
         omittest[8] = 0
         omittest[9] = 0
         omittest[10] = 0
@@ -158,6 +161,24 @@ def rep_pulser(parser,path='testitems'):
     CONTENTS = SECTIONNAME + FIGURE
 
     return CONTENTS
+
+def put_figures(snum,figurenames,path='testitems'):
+    if len(figurenames) < 4: 
+        return ""
+    FIGURE = r'''
+\begin{figure}[h]
+\centering
+\includegraphics[width=.9\textwidth]{''' + f'{path}/{snum}/{figurenames[0]}' + r'''}
+\caption{''' + str(figurenames[1]) + r'''}
+\end{figure}
+\begin{figure}[h]
+\centering
+\includegraphics[width=.9\textwidth]{''' + f'{path}/{snum}/{figurenames[2]}' + r'''}
+\caption{''' + str(figurenames[3]) + '''}
+\end{figure}
+'''
+    return FIGURE
+    
 
 def rep_dacscan(parser,path='testitems'):
     results, minvalues = dacscan.dacscan(parser,path)
