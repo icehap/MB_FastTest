@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from iceboot.iceboot_session import getParser, startIcebootSession
-from iceboot.test_waveform import parseTestWaveform
+from iceboot.test_waveform import parseTestWaveform, applyPatternSubtraction
 from optparse import OptionParser
 import numpy as np
 import tables
@@ -117,10 +117,13 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
             index = index + 1
             beginWFstream(session, options, channel, testRun, threshold, feplsr)
             continue
+        print(readout)
 
         # Check for timeout
         if readout is None:
             continue
+        if options.bsub: 
+            applyPatternSubtraction(readout)
         wf = readout["waveform"]
         # Fix for 0x6a firmware
         if len(wf) != nSamples:
