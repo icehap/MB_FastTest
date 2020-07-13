@@ -65,7 +65,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
 
     if int(options.hvv) > 0:
         if int(nSamples) > 128:
-            session.setDEggConstReadout(channel, 4, int(nSamples))
+            session.setDEggConstReadout(channel, 2, int(nSamples))
         session.setDEggHV(channel,int(options.hvv))
         session.enableHV(channel)
         time.sleep(1)
@@ -130,6 +130,8 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
         timestamp = readout["timestamp"]
         pc_time = time.time()
 
+        tot = readout["thresholdFlags"]
+
         if dacvalue > -1:
             filename = f'{path}/{options.mbsnum}/dacscan_ch{channel}_{dacvalue}.hdf5'
         elif feplsr > 0:
@@ -153,6 +155,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
                     shape=np.asarray(wf).shape)
                 timestamp = tables.Int64Col()
                 pc_time = tables.Float32Col()
+                thresholdFlags = tables.Int32Col(shape=np.asarray(xdata).shape)
 
             with tables.open_file(filename, 'w') as open_file:
                 table = open_file.create_table('/', 'data', Event)
@@ -167,6 +170,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
             event['waveform'] = np.asarray(wf, dtype=np.float32)
             event['timestamp'] = timestamp 
             event['pc_time'] = pc_time 
+            event['thresholdFlags'] = tot
             event.append()
             table.flush()
 

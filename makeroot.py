@@ -21,6 +21,7 @@ def main():
     event_ids = data.col('event_id')
     times = data.col('time')
     waveforms = data.col('waveform')
+    thresFlags = data.col('thresholdFlags') # added. If observe errors, please comment out it. 
 
     nsamples = len(waveforms[0])
     fq = np.linspace(0,240,nsamples)
@@ -46,6 +47,7 @@ def main():
     subdir = topdir.mkdir("Waveforms")
     subdir2 = topdir.mkdir("FFT")
     subdir3 = topdir.mkdir("proj")
+    thrdir = topdir.mkdir("thresFlags")
 
     fltwfs = []
 
@@ -103,6 +105,10 @@ def main():
             h2.Fill(j,waveform[j])
         #h2.Draw("hist")
 
+        htot = TH1D(f'w{i}','ThresholdFlags;Sampling Bin;Threshold Flag',nsamples,0,nsamples)
+        for j in range(len(thresFlags[i])):
+            htot.Fill(j,thresFlags[i][j])
+
 
         if max(waveform) - np.mean(waveform[bsstart:nsamples]) < args.threshold:
             continue
@@ -117,6 +123,9 @@ def main():
 
         subdir3.cd()
         proj.Write()
+
+        thrdir.cd()
+        htot.Write()
 
     print('')
 
