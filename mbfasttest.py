@@ -84,13 +84,13 @@ FAIL = r'''{\begin{center} \checkbox{white} PASS \hspace{2ex} \checkbox{red} FAI
 
 def rep_sensor(parser):
     (options, args) = parser.parse_args()
-    thresMin, thresMax, out, outbool = sensorcheck.main(parser) 
+    thresMin, thresMax, out, outbool, citems, units = sensorcheck.main(parser) 
     
     SECTIONNAME = r'''\section{Slow Monitoring and Sensors}'''
 
-    citems = ['+1V1 Current','+1V35 Current', '+1V8 Current', '+2V5 Current', '+3V3 Current', '+1V8\_A Voltage', 'Light Sensor', 'Temperature', 'HV ch0 Voltage', 'HV ch0 Current', 'HV ch1 Voltage', 'HV ch1 Current', '+1V1 Voltage', '+1V35 Voltage', '+2V5 Voltage', '+3V3 Voltage', 'Pressure']
-    units = ['~mA', '~mA', '~mA', '~mA', '~mA', '~V', '~mV', '${}^{\circ}$C', '~V', '~$\mu$A', '~V', '~$\mu$A', '~V', '~V', '~V', '~V', '~hPa']
-    criteriapres = 'Pressure    & $' + str(thresMin[16]) + '\leq x \leq ' + str(thresMax[16]) + '$ & ' + str(out[16]) + ' & \judgemark{' + str(outbool[16]) + '} '  
+    #citems = ['+1V1 Current','+1V35 Current', '+1V8 Current', '+2V5 Current', '+3V3 Current', '+1V8\_A Voltage', 'Light Sensor', 'Temperature', 'HV ch0 Voltage', 'HV ch0 Current', 'HV ch1 Voltage', 'HV ch1 Current', '+1V1 Voltage', '+1V35 Voltage', '+2V5 Voltage', '+3V3 Voltage', 'Pressure']
+    #units = ['~mA', '~mA', '~mA', '~mA', '~mA', '~V', '~mV', '${}^{\circ}$C', '~V', '~$\mu$A', '~V', '~$\mu$A', '~V', '~V', '~V', '~V', '~hPa']
+    #criteriapres = 'Pressure    & $' + str(thresMin[16]) + '\leq x \leq ' + str(thresMax[16]) + '$ & ' + str(out[16]) + ' & \judgemark{' + str(outbool[16]) + '} '  
 
     CONTENTSBEGIN = r'''
 \begin{table}[h]

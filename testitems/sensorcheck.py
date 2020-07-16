@@ -30,6 +30,9 @@ def main(parser):
     ch15: +3V3  Voltage Monitor     (V)
     '''
 
+    citems = ['+1V1 Current','+1V35 Current', '+1V8 Current', '+2V5 Current', '+3V3 Current', '+1V8\_A Voltage', 'Light Sensor', 'Temperature', 'HV ch0 Voltage', 'HV ch0 Current', 'HV ch1 Voltage', 'HV ch1 Current', '+1V1 Voltage', '+1V35 Voltage', '+2V5 Voltage', '+3V3 Voltage', 'Pressure']
+    units = ['~mA', '~mA', '~mA', '~mA', '~mA', '~V', '~mV', '${}^{\circ}$C', '~V', '~$\mu$A', '~V', '~$\mu$A', '~V', '~V', '~V', '~V', '~hPa']
+
     #targetMax = [500,500,500,500,500,1.9,5000,60,2000,100,2000,100,1.2,1.45,2.6,3.4,2000]
     #targetMin = [  0,  0,  0,  0,  0,1.7,   0,10,   0,  0,   0,  0,1.0,1.25,2.4,3.2, 500]
     targetMax = [1000,500,500,500,500,1.9,5000,35,int(options.hvv)+5,200,int(options.hvv)+5,200,1.2,1.45,2.6,3.4,1200]
@@ -70,7 +73,7 @@ def main(parser):
     session.disableHV(0)
     session.disableHV(1)
 
-    return targetMin, targetMax, outputs, outbool
+    return targetMin, targetMax, outputs, outbool, citems, units
     
 def readSloAdcChannel(session, channel):
     out = session.cmd("%d sloAdcReadChannel" % (channel)) 
