@@ -54,7 +54,7 @@ def mkplot(path):
         minFFT = minFFTs[channel]
         fig = plt.figure()
         plt.xlabel("Frequency [MHz]", ha='right', x=1.0)
-        plt.ylabel("Apmlitude [LSB]", ha='right', y=1.0)
+        plt.ylabel("Amplitude [LSB]", ha='right', y=1.0)
         plt.yscale('log')
         plt.plot(minFFT[0],minFFT[1],color=chcolors[channel],label=f'Ch{channel}')
         plt.xlim(0,120)
@@ -69,7 +69,7 @@ def mkplot(path):
         maxFFT = maxFFTs[channel]
         fig = plt.figure()
         plt.xlabel("Frequency [MHz]", ha='right', x=1.0)
-        plt.ylabel("Apmlitude [LSB]", ha='right', y=1.0)
+        plt.ylabel("Amplitude [LSB]", ha='right', y=1.0)
         plt.yscale('log')
         plt.plot(maxFFT[0],maxFFT[1],color=chcolors[channel],label=f'Ch{channel}')
         plt.xlim(0,120)
