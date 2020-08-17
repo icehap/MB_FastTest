@@ -55,13 +55,29 @@ def thresSpeCurve(parser, path='.'):
 
     baseline = 0
     threshold = 0
-    #baseline = getThreshold(parser, channel, 30000, 0, path)
-    print(f'Threshold: {baseline}')
+    
+    baselineset = 30000
+    if len(options.dacSettings)==2: 
+        print(options.dacSettings)
+        dacSet = options.dacSettings[0]
+        baselineset = int(dacSet[1]) 
+
     if options.threshold is None:
-        threshold = baseline
+        baseline = getThreshold(parser, channel, baselineset, 0, path)
+        print(f'Observed baseline: {baseline}')
+        if options.bsthres is not None: 
+            if baseline - int(baseline) > 0.5: 
+                baseline = int(baseline) + 1
+            else: 
+                baseline = int(baseline)
+            threshold = int(baseline) + int(options.bsthres)
+        else: 
+            threshold = int(baseline + 72.59/5)
     else : 
         threshold = int(options.threshold)
 
+    print(f'Set threshold: {threshold}')
+    
     scope.main(parser,channel,path=path,threshold=threshold)
 
     getSpeCurve(parser, channel, datapath, baseline)
@@ -124,6 +140,8 @@ def getIntCharges(filename, baseline):
         charges.append(charge)
 
     avgwf = np.mean(waveforms, axis=0)
+
+    f.close()
 
     return charges, avgwf  
 

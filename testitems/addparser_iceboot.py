@@ -32,3 +32,5 @@ def AddParser(parser):
                       help="HV values for both channels", default=0)
     parser.add_option("--baselineSubtract", dest="bsub", action="store_true",
                       help="Subtract FPGA baseline", default=False)
+    parser.add_option("--bsthres", dest="bsthres", 
+                      help="Threshold above baseline", default=None) 

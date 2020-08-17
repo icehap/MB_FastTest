@@ -25,8 +25,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
         print('Session closed.')
         loadFPGA(parser)
         trial = trial + 1
-        print (trial)
-        print('Re-start the session.')
+        print(f'Re-start the session. Trial {trial}...')
         session = startIcebootSession(parser)
     
     nevents = int(options.nevents)
@@ -53,7 +52,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
         print("Number of samples must be at least 16")
         sys.exit(1)
 
-    session.setDEggConstReadout(channel, 1, int(nSamples))
+    session.setDEggConstReadout(channel, 2, int(nSamples))
 
     plt.ion()
     plt.show()
@@ -65,9 +64,14 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
 
     if int(options.hvv) > 0:
         if int(nSamples) > 128:
-            session.setDEggConstReadout(channel, 2, int(nSamples))
-        session.setDEggHV(channel,int(options.hvv))
-        session.enableHV(channel)
+            session.setDEggConstReadout(channel, 4, int(nSamples))
+        #session.setDEggHV(channel,int(options.hvv))
+        #session.enableHV(channel)
+        session.setDEggHV(0,int(options.hvv))
+        session.enableHV(0)
+        time.sleep(1)
+        session.setDEggHV(1,int(options.hvv))
+        session.enableHV(1)
         time.sleep(1)
         HVobs = session.readSloADC_HVS_Voltage(channel)
         print(f'Observed HV Supply Voltage for channel {channel}: {HVobs} V.')
@@ -109,6 +113,8 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     i = 0
     index = 0
     while (True):
+        if i % 100 == 0: 
+            print(f"Event: {i}")
         try:
             readout = parseTestWaveform(session.readWFMFromStream())
         except IOError:
@@ -117,7 +123,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
             index = index + 1
             beginWFstream(session, options, channel, testRun, threshold, feplsr)
             continue
-        print(readout)
+        #print(readout)
 
         # Check for timeout
         if readout is None:
