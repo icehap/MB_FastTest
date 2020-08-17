@@ -154,15 +154,19 @@ def getData(filename):
 
     y = []
     yerr = []
+    baselines = []
     for i in range(len(waveforms)):
         waveform = waveforms[i]
         baseline = np.mean(waveform[0:120])
         maxwf = max(waveform)
         y.append(maxwf - baseline)
         yerr.append(getArrRMS(waveform[0:120]))
+        baselines.append(np.mean(waveform))
     
     f.close()
 
+    baseline = np.mean(baselines)
+    
     return x, np.mean(y), np.mean(yerr), baseline, waveform
 
 if __name__ == "__main__":

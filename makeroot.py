@@ -4,7 +4,7 @@ import tables
 import os
 import sys
 import numpy as np
-from ROOT import TFile, TH1D, gROOT, gDirectory
+from ROOT import TFile, TH1D, gROOT, gDirectory, TGraphErrors, TCanvas
 from argparse import ArgumentParser
 from tqdm import tqdm
 
@@ -14,6 +14,7 @@ def main():
     filename = args.filename
 
     os.system('mkdir -p rootfiles')
+    os.system('mkdir -p plots')
 
     f = tables.open_file(filename)
 
@@ -21,12 +22,19 @@ def main():
     event_ids = data.col('event_id')
     times = data.col('time')
     waveforms = data.col('waveform')
+    timestamps = data.col('timestamp')
+    thresFlags = data.col('thresholdFlags') # added. If observe errors, please comment it out. 
 
     nsamples = len(waveforms[0])
     fq = np.linspace(0,240,nsamples)
 
     gmean = np.mean(waveforms[0])
+    globalmean = np.mean(waveforms)
     print(np.mean(waveforms[0]))
+
+    c = TCanvas("c","c",800,600)
+    c.Draw()
+    c.SetGrid()
 
     of = TFile('rootfiles/{0}.root'.format(filename.split('.h',1)[0]),"RECREATE")
 
@@ -34,6 +42,23 @@ def main():
     hpk  = TH1D('peak','peak;ADC count;Entry',500,-100,900)
     havg = TH1D('avgwf','Averaged Waveform;Sampling Bin;ADC count',nsamples,0,nsamples)
     havgfft = TH1D('avgfft','FFT Averaged Waveform;Frequency [MHz];Amplitude [LSB]',int(len(fq)/2)+1,0,120+240/(nsamples-1))
+    hifft = TH1D('Subtwf','Averaged Waveform;Sampling Bin;ADC count',nsamples,0,nsamples)
+    hsfft = TH1D('Subtfft','FFT Averaged Waveform;Frequency [MHz];Amplitude [LSB]',int(len(fq)/2)+1,0,120+240/(nsamples-1)) 
+    hsspe = TH1D('qdist_subt','qdist_subt;ADC count;Entry',500,-100,900)
+    hmax  = TH1D('hmax','hmax;ADC count;Entry',500,-100,900)
+    bsfluc = TH1D('bsfluc','bsfluc;ADC count;Entry',100, int(globalmean)-50, int(globalmean)+50)
+    bsshift = TGraphErrors()
+    bsshift.SetName('bsshift')
+    bsshift.SetTitle('bsshift;Event Number;Baseline [LSB]')
+    nrshift = TGraphErrors()
+    nrshift.SetName('nrshift')
+    nrshift.SetTitle('NoiseRateShift;Event Number;Noise Rate [Hz]')
+    rmsshift = TGraphErrors()
+    rmsshift.SetName('rmsshift')
+    rmsshift.SetTitle('RMSNoiseShift;Event Number;RMS Noise [LSB]')
+    rmstime = TGraphErrors()
+    rmstime.SetName('rmstime')
+    rmstime.SetTitle('rmstime;Unix time [s];RMS Noise [LSB]')
     
     winmin = args.minimum
     winmax = args.minimum + args.window
@@ -46,18 +71,43 @@ def main():
     subdir = topdir.mkdir("Waveforms")
     subdir2 = topdir.mkdir("FFT")
     subdir3 = topdir.mkdir("proj")
+    thrdir = topdir.mkdir("thresFlags")
 
     fltwfs = []
+    starttimestamp = timestamps[0]
 
     for i in tqdm(range(len(waveforms))):
         waveform = waveforms[i]
+        timestamp = timestamps[i]
+
+        bsfluc.Fill(np.mean(waveform))
+        n = bsshift.GetN()
+        bsshift.Set(n+1)
+        bsshift.SetPoint(n, i, np.mean(waveform))
+        bsshift.SetPointError(n, 0, np.std(waveform))
+
+        n = rmsshift.GetN()
+        rmsshift.Set(n+1)
+        rmsshift.SetPoint(n, i, np.std(waveform))
+        rmsshift.SetPointError(n, 0, 0)
+        
+        hmax.Fill(np.max(waveform)-np.mean(waveform))
+
+        timeinterval = ((timestamp - starttimestamp - i*nsamples)/240.e6 - i * 0.501)
+        nr = 0 
+        nrerr = 0
+        if timeinterval > 0: 
+            nr = (i+1)/timeinterval 
+            nrerr = np.sqrt(i+1)/timeinterval
+        n = nrshift.GetN()
+        nrshift.Set(n+1)
+        nrshift.SetPoint(n, i, nr) 
+        nrshift.SetPointError(n, 0, nrerr)
 
         # FFT & IFFT ###
-        F = np.fft.fft(waveform)
-        F_abs = np.abs(F)
-        F_abs_amp = F_abs / len(waveform) * 2 
-        F_abs_amp[0] = F_abs_amp[0] / 2 
+        F_abs_amp = doFFT(waveform)
 
+        F = np.fft.fft(waveform)
         F2 = np.copy(F)
         fc = 60
         df = 2
@@ -75,39 +125,58 @@ def main():
         baseline_mean = np.mean(waveform[bsstart:nsamples])
 
         center = int(baseline_mean)
-        proj = TH1D(f'proj{i}','Projection waveform;ADC count;Entry',300,center-150,center+150)
+        proj = TH1D(f'proj{i}',f'Projection waveform{i};ADC count;Entry',300,center-150,center+150)
         selected = waveform[waveform < np.mean(waveform) + 10]
         for j in range(len(selected)):
             proj.Fill(selected[j])
-        proj.Fit("gaus")
-        if len(selected) > 0:
-            f = proj.GetFunction('gaus')
-            norm = f.GetParameter(0)
-            mean = f.GetParameter(1)
-            sigma = f.GetParameter(2)
+        #proj.Fit("gaus")
+        #if len(selected) > 0:
+        #    f = proj.GetFunction('gaus')
+        #    norm = f.GetParameter(0)
+        #    mean = f.GetParameter(1)
+        #    sigma = f.GetParameter(2)
 
-        reduced_waveform = waveform - mean
+        reduced_waveform = waveform - baseline_mean
         scale = (nsamples-bsstart)/(winmax-winmin)
         #h.Fill(sum(waveform[winmin:winmax])-sum(waveform[bsstart:nsamples])/scale)
         h.Fill(sum(reduced_waveform[winmin:winmax]))
 
+        hsspe.Fill(np.sum(F2_ifft_real[winmin:winmax])-baseline_mean*(winmax-winmin))
+
         hpk.Fill(max(waveform[winmin:winmax])-np.mean(waveform[bsstart:nsamples]))
 
-        hfft = TH1D(f'FFT{i}','FFT;Frequency [MHz];Amplitude [LSB]',int(len(fq)/2)+1,0,120+240/(nsamples-1))
+        hfft = TH1D(f'FFT{i}','FFT{i};Frequency [MHz];Amplitude [LSB]',int(len(fq)/2)+1,0,120+240/(nsamples-1))
+        hfft2 = TH1D(f'FFT2{i}','FFT2{i};Frequency [MHz];Amplitude [LSB]',int(len(fq)/2)+1,0,120+240/(nsamples-1))
         for j in range(int(len(F_abs_amp)/2.+1)):
             hfft.Fill(fq[j],F_abs_amp[j])
-        #hfft.Draw("hist")
+            hfft2.Fill(fq[j],F2_abs_amp[j])
 
-        h2 = TH1D(f'w{i}','Waveform;Sampling Bin;ADC count',nsamples,0,nsamples)
+        h2 = TH1D(f'w{i}','Waveform{i};Sampling Bin;ADC count',nsamples,0,nsamples)
         for j in range(len(waveform)):
             h2.Fill(j,waveform[j])
         #h2.Draw("hist")
 
+        if np.max(F2_abs_amp[1:int(len(F2_abs_amp)/2.+1)]) > 0.5:
+            c.SetLogy(0)
+            h2.SetLineColor(4)
+            h2.Draw("hist")
+            c.Print(f"plots/w{i}.pdf(")
+            c.SetLogy(1)
+            hfft.SetLineColor(4)
+            hfft.Draw("hist")
+            c.Print(f"plots/w{i}.pdf)")
+
+        htot = TH1D(f'thresflags{i}','ThresholdFlags{i};Sampling Bin;Threshold Flag',nsamples,0,nsamples)
+        for j in range(len(thresFlags[i])):
+            htot.Fill(j,thresFlags[i][j])
 
         if max(waveform) - np.mean(waveform[bsstart:nsamples]) < args.threshold:
             continue
 
         fltwfs.append(waveform)
+
+        if args.silent: 
+            continue
 
         subdir2.cd()
         hfft.Write()
@@ -118,21 +187,26 @@ def main():
         subdir3.cd()
         proj.Write()
 
+        thrdir.cd()
+        htot.Write()
+
     print('')
 
     avgfltwfs = np.mean(fltwfs, axis=0)
     for i in range(len(avgfltwfs)): 
         havg.Fill(i,avgfltwfs[i])
     
-    Favg = np.fft.fft(avgfltwfs)
-    Favg_abs = np.abs(Favg)
-    Favg_abs_amp = Favg_abs / len(avgfltwfs) * 2 
-    Favg_abs_amp[0] = Favg_abs_amp[0] / 2 
+    Favg_abs_amp = doFFT(avgfltwfs) 
 
+    Favg = np.fft.fft(avgfltwfs)
     Favg2 = np.copy(Favg)
     Favg2[(fq>59) & (fq<61)] = 0
     Favg2[(fq>119) & (fq<121)] = 0
     Favg2[(fq>179) & (fq<181)] = 0
+
+    Favg2_abs = np.abs(Favg2)
+    Favg2_abs_amp = Favg2_abs / len(avgfltwfs) * 2
+    Favg2_abs_amp[0] = Favg_abs_amp[0] / 2
 
     Favg2_ifft = np.fft.ifft(Favg2)
     Favg2_ifft_real = Favg2_ifft.real
@@ -140,14 +214,35 @@ def main():
     for i in range(int(len(Favg_abs_amp)/2.+1)):
         havgfft.Fill(fq[i],Favg_abs_amp[i])
 
+    for i in range(int(len(Favg2_abs_amp)/2.+1)):
+        hsfft.Fill(fq[i],Favg2_abs_amp[i])
+
+    for i in range(len(Favg2_ifft_real)): 
+        hifft.Fill(i, Favg2_ifft_real[i])
+
     topdir.cd()
     h.Write()
     hpk.Write()
     havg.Write()
     havgfft.Write()
+    hsfft.Write()
+    hifft.Write()
+    hsspe.Write()
+    hmax.Write()
+    bsfluc.Write()
+    bsshift.Write()
+    nrshift.Write()
+    rmsshift.Write()
 
     of.Close()
+    f.close()
 
+def doFFT(wf):
+    F = np.fft.fft(wf)
+    F_abs = np.abs(F)
+    F_abs_amp = F_abs / len(wf) * 2
+    F_abs_amp[0] = F_abs_amp[0] / 2
+    return F_abs_amp 
 
 def parser():
     argparser = ArgumentParser()
@@ -164,6 +259,7 @@ def parser():
     argparser.add_argument('-bs', '--baselineEst', 
                            type=int, default=160, 
                            help='Starting point of the window to evaluate the baseline value. ')
+    argparser.add_argument('-s','--silent', action='store_false')
 
     return argparser.parse_args()
 

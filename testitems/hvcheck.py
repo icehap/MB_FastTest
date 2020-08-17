@@ -62,11 +62,11 @@ def getLists(session, HVsettings, channel):
     for i in range(len(HVsettings)):
         session.setDEggHV(channel, HVsettings[i])
         session.enableHV(channel)
-        time.sleep(1)
+        time.sleep(0.5)
         
         hvvols = []
         hvcurs = []
-        for j in range(20):
+        for j in range(10):
             hvv = readSloAdcChannel(session,8+2*channel)
             time.sleep(0.5)
             hvc = readSloAdcChannel(session,9+2*channel)
