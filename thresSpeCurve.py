@@ -7,6 +7,7 @@ import numpy as np
 import scope
 import tables
 import time
+import datetime
 from addparser_iceboot import AddParser
 import matplotlib.pyplot as plt
 from mkplot import plotSetting
@@ -20,9 +21,9 @@ def main(parser):
         print('Do not use "/" in the MB serial number. Exit.') 
         sys.exit(0)
 
-    unixtime = int(time.time())
-    index = 0 
-    prepath = f'results/SpeHist/{snum}/{unixtime}_'
+    date = datetime.date.today()
+    index = 1
+    prepath = f'results/SpeHist/{snum}/{date}/Run'
     path = prepath + str(index)
 
     while os.path.isdir(path):
@@ -44,7 +45,7 @@ def thresSpeCurve(parser, path='.'):
         print ('Quit.')
         return
 
-    datapath = f'{path}/{snum}'
+    datapath = f'{path}/raw'
 
     os.system(f'mkdir -p {datapath}')
 
