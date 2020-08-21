@@ -19,9 +19,9 @@ def pulserCalib(parser, path='.'):
 
     snum = options.mbsnum
 
-    datapath = path + '/' + snum
+    datapath = f'{path}/raw'
 
-    os.system('mkdir -p ' + datapath)
+    os.system(f'mkdir -p {datapath}')
 
     modes = [1,2,3,4,6,9,12,18,36,72] # divisors of 36 (=48-12)
     mode = modes[1] + 1
@@ -55,9 +55,9 @@ def getThreshold(parser, channel, baselineset, thresholdset, path):
     testRun = 50
 
     snum = options.mbsnum
-    datapath = path + '/' + snum
+    datapath = f'{path}/raw'
 
-    filename = datapath + '/dacscan_ch' + str(channel) + '_' + str(baselineset) + '.hdf5'
+    filename = f'{datapath}/dacscan_ch{channel}_{baselineset}.hdf5'
     
     if not os.path.exists(filename): 
         scope.main(parser,channel,baselineset,path,testRun=testRun)
@@ -84,7 +84,7 @@ def mkplot_pc(path):
     stackorder = 1
     for channel in range(2):
 
-        pathdata = path + '/plscalib*ch' + str(channel) + '*.hdf5'
+        pathdata = f'{path}/plscalib*ch{channel}*.hdf5'
         filenames = glob.glob(pathdata) 
 
         x, y, yerr, wf = mkDataSet(natsorted(filenames))
@@ -101,7 +101,7 @@ def mkplot_pc(path):
     plt.legend()
     fig.canvas.draw()
     plt.pause(0.001)
-    plt.savefig(path+'/PlsrCalibPlot.pdf')
+    plt.savefig(f'{path}/PlsrCalibPlot.pdf')
 
     fig = plt.figure()
     plt.xlabel("Sampling Bins", ha='right', x=1.0)
@@ -115,7 +115,7 @@ def mkplot_pc(path):
     plt.xlim(0,maxx)
     fig.canvas.draw()
     plt.pause(0.001)
-    plt.savefig(path+'/PlsrCalib_WF.pdf')
+    plt.savefig(f'{path}/PlsrCalib_WF.pdf')
 
     return 0, 0 
 

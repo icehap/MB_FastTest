@@ -142,13 +142,13 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
         tot = readout["thresholdFlags"]
 
         if dacvalue > -1:
-            filename = f'{path}/{options.mbsnum}/dacscan_ch{channel}_{dacvalue}.hdf5'
+            filename = f'{path}/raw/dacscan_ch{channel}_{dacvalue}.hdf5'
         elif feplsr > 0:
-            filename = f'{path}/{options.mbsnum}/plscalib_ch{channel}_{feplsr}.hdf5'
+            filename = f'{path}/raw/plscalib_ch{channel}_{feplsr}.hdf5'
         elif options.filename is None:
             raise ValueError('Please supply a filename to save the data to!')
         else:
-            odir = f'{path}/{options.mbsnum}'
+            odir = f'{path}/raw'
             if not os.path.isdir(odir): 
                 os.system(f'mkdir -p {odir}')
             filename = f'{odir}/{options.filename}'

@@ -13,9 +13,9 @@ def dacscan(parser, path='.'):
 
     snum = options.mbsnum
 
-    datapath = path + '/' + snum
+    datapath = f'{path}/raw'
 
-    os.system('mkdir -p ' + datapath)
+    os.system(f'mkdir -p {datapath}')
 
     #modes = [1,2,3,4,6,9,12,18,36,72] # divisors of 36 (=48-12)
     modes = [1,2,4,8,16,32,64,128,256] # divisors of 64 
