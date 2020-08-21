@@ -18,7 +18,7 @@ def main(parser,path='.'):
     
     HVsettings = np.arange(0,750,50)
 
-    datapath = f'{path}/{options.mbsnum}'
+    datapath = f'{path}/raw'
 
     for channel in range(2):
         hvvobs0, hvcobs0, hvverr0, hvcerr0 = getLists(session,HVsettings,channel)

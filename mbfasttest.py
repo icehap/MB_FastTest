@@ -29,9 +29,9 @@ def main():
         print('Do not use "/" in the MB serial number. Exit.')
         sys.exit(0)
 
-    unixtime = int(time.time())
-    index = 0
-    prepath = f'results/FastTest/{snum}/{unixtime}_'
+    date = datetime.date.today()
+    index = 1
+    prepath = f'results/FastTest/{snum}/{date}/Run'
     path = prepath + str(index)
 
     while os.path.isdir(path): 
@@ -39,7 +39,7 @@ def main():
         path = prepath + str(index)
     
     print(f'=== File path is: {path}. ===')
-    os.system('mkdir -p ' + path)
+    os.system(f'mkdir -p {path}')
 
     makereport(parser,snum,path)
 
@@ -48,7 +48,7 @@ def main():
 def makereport(parser,snum,path='.'): 
     (options, args) = parser.parse_args()
     ofilename = f'test_{snum}.tex'
-    ofpath = path + '/' + ofilename
+    ofpath = f'{path}/{ofilename}'
 
     inforeport = getConfInfo(parser)
 
@@ -68,7 +68,8 @@ def makereport(parser,snum,path='.'):
     f.write(sensorreport)
     f.write(dacscanreport)
     f.write(pulserreport)
-    f.write(put_figures(snum,hvcheck.main(parser,path),path))
+    if int(options.hven)!=-1: 
+        f.write(put_figures(snum,hvcheck.main(parser,path),path))
     ### above
     
     f.write(endconts())
@@ -146,14 +147,14 @@ def rep_pulser(parser,path='testitems'):
     FIGURE = r'''
 \begin{figure}[h]
 \centering
-\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + '''/PlsrCalibPlot.pdf}
+\includegraphics[width=.9\textwidth]{''' + f'{path}/raw' + '''/PlsrCalibPlot.pdf}
 \caption{AFE pulser calibration plot.}
 \end{figure}
     '''
     FIGURE = FIGURE + r'''
 \begin{figure}[h]
 \centering
-\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + '''/PlsrCalib_WF.pdf}
+\includegraphics[width=.9\textwidth]{''' + f'{path}/raw' + '''/PlsrCalib_WF.pdf}
 \caption{Waveform example with the FE pulse.}
 \end{figure}
     '''
@@ -168,12 +169,12 @@ def put_figures(snum,figurenames,path='testitems'):
     FIGURE = r'''
 \begin{figure}[h]
 \centering
-\includegraphics[width=.9\textwidth]{''' + f'{path}/{snum}/{figurenames[0]}' + r'''}
+\includegraphics[width=.9\textwidth]{''' + f'{path}/raw/{figurenames[0]}' + r'''}
 \caption{''' + str(figurenames[1]) + r'''}
 \end{figure}
 \begin{figure}[h]
 \centering
-\includegraphics[width=.9\textwidth]{''' + f'{path}/{snum}/{figurenames[2]}' + r'''}
+\includegraphics[width=.9\textwidth]{''' + f'{path}/raw/{figurenames[2]}' + r'''}
 \caption{''' + str(figurenames[3]) + '''}
 \end{figure}
 '''
@@ -189,7 +190,7 @@ def rep_dacscan(parser,path='testitems'):
     FIGURE = r'''
 \begin{figure}[h]
 \centering
-\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + '''/DACscanPlot.pdf}
+\includegraphics[width=.9\textwidth]{''' + f'{path}/raw'  + '''/DACscanPlot.pdf}
 \caption{DAC scan plot.}
 \end{figure}
     '''
@@ -197,12 +198,12 @@ def rep_dacscan(parser,path='testitems'):
     FIGURE2 = r'''
 \begin{figure}[h]
 \centering
-\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanFFT0Plot.pdf}
+\includegraphics[width=.9\textwidth]{''' + f'{path}/raw' + r'''/DACscanFFT0Plot.pdf}
 \caption{Channel 0 FFT plot at the DAC value where the noise RMS is minimum. }
 \end{figure}
 \begin{figure}[h]
 \centering
-\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanFFT1Plot.pdf}
+\includegraphics[width=.9\textwidth]{''' + f'{path}/raw' + r'''/DACscanFFT1Plot.pdf}
 \caption{Channel 1 FFT plot at the DAC value where the noise RMS is minimum. }
 \end{figure}
     '''
@@ -210,12 +211,12 @@ def rep_dacscan(parser,path='testitems'):
     FIGURE2 =  FIGURE2 + r'''
 \begin{figure}[h]
 \centering
-\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanMFFT0Plot.pdf}
+\includegraphics[width=.9\textwidth]{''' + f'{path}/raw' + r'''/DACscanMFFT0Plot.pdf}
 \caption{Channel 0 FFT plot at the DAC value where the noise RMS is maximum. }
 \end{figure}
 \begin{figure}[h]
 \centering
-\includegraphics[width=.9\textwidth]{''' + path + '/' + str(options.mbsnum) + r'''/DACscanMFFT1Plot.pdf}
+\includegraphics[width=.9\textwidth]{''' + f'{path}/raw' + r'''/DACscanMFFT1Plot.pdf}
 \caption{Channel 1 FFT plot at the DAC value where the noise RMS is maximum. }
 \end{figure}
     '''
@@ -258,16 +259,16 @@ Successfully installed the firmware from the flash memory on the mainboard.
 \begin{table}[h]
 \centering
 \caption{Test Configuration Summary.}
-\begin{tabular}{lll}
+\begin{tabular}{ll}
 \toprule 
-Contents & Values & Comments \\ \midrule '''
+Contents & Values \\ \midrule '''
     
     flashLSoutput = str(flashLS[len(flashLS)-1]['Name']).split('_')
     fnameinflash = ''
     for i in range(len(flashLSoutput)):
         fnameinflash += flashLSoutput[i]
         if i+1 < len(flashLSoutput):
-            fnameinflash += r'\_'
+            fnameinflash += '\_'
 
     ipcomments = ''
     if str(options.host) != 'localhost':
@@ -276,21 +277,20 @@ Contents & Values & Comments \\ \midrule '''
         ipcomments = 'Using Mini-FieldHub'
 
     Names  = ['Flash ID','FPGA Chip ID','Host IP Address', 'Port Number','FPGA FW Ver.', 'Iceboot SW Ver.']
-    Values = [str(flashId), str(fpgaId), str(options.host), str(options.port), f'0x{fwVer:x}', f'{swVer:x}']
-    Comments = ['','', ipcomments,'', 'File: ' + fnameinflash , 'ID: ' + str(swid) ]
+    Values = [str(flashId), str(fpgaId), f'{options.host}; {ipcomments}', str(options.port), f'0x{fwVer:x}; File: {fnameinflash}', f'{swVer:x}; ID: {swid}']
 
     for i in range(len(Names)):
-        CONTENTS += Names[i] + ' & ' + Values[i] + ' &  '  + Comments[i] + r'''\\'''
+        CONTENTS += f'{Names[i]} & {Values[i]}' + r' \\'
         if i==1: 
             CONTENTS += r'''\midrule '''
 
     hvcomments = ['HV0: Not connected, HV1: Not connected.','HV0: Connected, HV1: Not connected.', 'HV0: Not connected, HV1: Connected.', 'HV0: Connected, HV1: Connected.']
     CONTENTS += r'''
 \midrule 
-HV Boards & \multicolumn{2}{l}{''' + hvcomments[int(options.hven)+1] + r'''} \\ 
-Camera & Not connected. & \\ 
+HV Boards & ''' + hvcomments[int(options.hven)+1] + r''' \\ 
+Camera & Not connected.  \\ 
 \midrule
-OS & \multicolumn{2}{l}{'''
+OS & '''
     
     platformoutput = platform.platform().split('_')
     for i in range(len(platformoutput)):
@@ -298,9 +298,9 @@ OS & \multicolumn{2}{l}{'''
         if i+1 < len(platformoutput):
             CONTENTS += r'\_'
 
-    CONTENTS += r'''}\\
-Python Ver. & \multicolumn{2}{l}{''' + sys.version + r'''}  \\
-Test Date & ''' + (datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") + r''' & \\
+    CONTENTS += r'''\\
+Python Ver. & ''' + sys.version + r'''  \\
+Test Date & ''' + (datetime.datetime.now()).strftime("%Y-%m-%d %H:%M:%S") + r''' \\
 \bottomrule
 \end{tabular}
 \end{table}'''
