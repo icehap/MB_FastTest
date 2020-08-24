@@ -62,6 +62,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     plt.ylabel("ADC Count",ha='right',y=1.0)
     line = None
 
+    HVobs = 0
     if int(options.hvv) > 0:
         if int(nSamples) > 128:
             session.setDEggConstReadout(channel, 4, int(nSamples))
@@ -110,6 +111,44 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
 
     signal.signal(signal.SIGINT, signal_handler)
 
+    odir = f'{path}/raw'
+    if dacvalue > -1:
+        filename = f'{odir}/dacscan_ch{channel}_{dacvalue}.hdf5'
+    elif feplsr > 0:
+        filename = f'{odir}/plscalib_ch{channel}_{feplsr}.hdf5'
+    elif options.filename is None:
+        raise ValueError('Please supply a filename to save the data to!')
+    else:
+        if not os.path.isdir(odir): 
+            os.system(f'mkdir -p {odir}')
+        filename = f'{odir}/{options.filename}'
+
+    # Prepare hdf5 file
+    if not os.path.isfile(filename):
+        class Config(tables.IsDescription): 
+            channel = tables.Int32Col()
+            hv = tables.Float32Col()
+            threshold = tables.Int32Col()
+            mainboard = tables.StringCol(10)
+            flashid = tables.StringCol(len(session.flashID()))
+            fpgaVersion = tables.Int32Col()
+            MCUVersion = tables.Int32Col()
+
+        with tables.open_file(filename, 'w') as open_file:
+            table = open_file.create_table('/', 'Config', Config)
+            table = open_file.get_node('/Config')
+            config = table.row
+            config['channel'] = channel
+            config['hv'] = HVobs
+            config['mainboard'] = options.mbsnum
+            config['flashid'] = session.flashID()
+            config['fpgaVersion'] = session.fpgaVersion()
+            config['MCUVersion'] = session.softwareVersion()
+
+    else: 
+        print("File already exists! Try again. Exit.") 
+        return 
+
     i = 0
     index = 0
     while (True):
@@ -141,39 +180,22 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
 
         tot = readout["thresholdFlags"]
 
-        if dacvalue > -1:
-            filename = f'{path}/raw/dacscan_ch{channel}_{dacvalue}.hdf5'
-        elif feplsr > 0:
-            filename = f'{path}/raw/plscalib_ch{channel}_{feplsr}.hdf5'
-        elif options.filename is None:
-            raise ValueError('Please supply a filename to save the data to!')
-        else:
-            odir = f'{path}/raw'
-            if not os.path.isdir(odir): 
-                os.system(f'mkdir -p {odir}')
-            filename = f'{odir}/{options.filename}'
-
-        # Prepare hdf5 file
-        #if i == 0:
-        if not os.path.isfile(filename):
-            class Event(tables.IsDescription):
-                event_id = tables.Int32Col()
-                time = tables.Float32Col(
-                    shape=np.asarray(xdata).shape)
-                waveform = tables.Float32Col(
-                    shape=np.asarray(wf).shape)
-                timestamp = tables.Int64Col()
-                pc_time = tables.Float32Col()
-                thresholdFlags = tables.Int32Col(shape=np.asarray(xdata).shape)
-
-            with tables.open_file(filename, 'w') as open_file:
-                table = open_file.create_table('/', 'data', Event)
-
         # Write to hdf5 file
         with tables.open_file(filename, 'a') as open_file:
-            table = open_file.get_node('/data')
-            event = table.row
+            try: 
+                table = open_file.get_node('/data')
+            except:
+                class Event(tables.IsDescription):
+                    event_id = tables.Int32Col()
+                    time = tables.Float32Col(shape=np.asarray(xdata).shape)
+                    waveform = tables.Float32Col(shape=np.asarray(wf).shape)
+                    timestamp = tables.Int64Col()
+                    pc_time = tables.Float32Col()
+                    thresholdFlags = tables.Int32Col(shape=np.asarray(xdata).shape)
+                table = open_file.create_table('/', 'data', Event)
+                table = open_file.get_node('/data')
 
+            event = table.row
             event['event_id'] = i
             event['time'] = np.asarray(xdata, dtype=np.float32)
             event['waveform'] = np.asarray(wf, dtype=np.float32)
