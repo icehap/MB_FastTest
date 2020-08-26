@@ -3,6 +3,7 @@
 from iceboot.iceboot_session import getParser, startIcebootSession
 from iceboot.test_waveform import parseTestWaveform, applyPatternSubtraction
 from optparse import OptionParser
+from sensorcheck import readSloAdcChannel
 import numpy as np
 import tables
 import matplotlib.pyplot as plt
@@ -46,6 +47,13 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
         session.setDAC(setchannel,dacvalue)
         time.sleep(0.1)
     
+    setdacvalue = 0
+    if len(options.dacSettings) > 0: 
+        for setting in options.dacSettings:
+            setdacvalue = setting[1]
+    else: 
+        setdacvalue = dacvalue
+    
     # Number of samples must be divisible by 4
     nSamples = (int(options.samples) / 4) * 4
     if (nSamples < 16):
@@ -66,13 +74,8 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     if int(options.hvv) > 0:
         if int(nSamples) > 128:
             session.setDEggConstReadout(channel, 4, int(nSamples))
-        #session.setDEggHV(channel,int(options.hvv))
-        #session.enableHV(channel)
-        session.setDEggHV(0,int(options.hvv))
-        session.enableHV(0)
-        time.sleep(1)
-        session.setDEggHV(1,int(options.hvv))
-        session.enableHV(1)
+        session.setDEggHV(channel,int(options.hvv))
+        session.enableHV(channel)
         time.sleep(1)
         HVobs = session.readSloADC_HVS_Voltage(channel)
         print(f'Observed HV Supply Voltage for channel {channel}: {HVobs} V.')
@@ -84,22 +87,8 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
         session.setDAC('D',feplsr)
         time.sleep(0.1)
         session.enableFEPulser(channel,4)
-
-    if options.external and testRun==0:
-        print('Notice: This is external trigger mode.')
-        session.startDEggExternalTrigStream(channel)
-    elif feplsr > 0: 
-        print('Notice: This is FE pulser mode.')
-        session.startDEggThreshTrigStream(channel,threshold)
-    elif threshold > 0: 
-        print(f'Notice: This is threshold trigger mode with threshold:{threshold}.')
-        session.startDEggThreshTrigStream(channel,threshold)
-    elif options.threshold is None:
-        print('Notice: This is software trigger mode.')
-        session.startDEggSWTrigStream(channel, int(options.swTrigDelay))
-    else:
-        print('Notice: This is threshold trigger mode.')
-        session.startDEggThreshTrigStream(channel, int(options.threshold))
+    
+    mode = beginWFstream(session, options, channel, testRun, threshold, feplsr)
 
     # define signal handler to end the stream on CTRL-C
     def signal_handler(*args):
@@ -126,24 +115,26 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     # Prepare hdf5 file
     if not os.path.isfile(filename):
         class Config(tables.IsDescription): 
-            channel = tables.Int32Col()
-            hv = tables.Float32Col()
             threshold = tables.Int32Col()
             mainboard = tables.StringCol(10)
+            triggermode = tables.StringCol(10)
             flashid = tables.StringCol(len(session.flashID()))
             fpgaVersion = tables.Int32Col()
             MCUVersion = tables.Int32Col()
+            baselinedac = tables.Int32Col()
 
         with tables.open_file(filename, 'w') as open_file:
-            table = open_file.create_table('/', 'Config', Config)
-            table = open_file.get_node('/Config')
+            table = open_file.create_table('/', 'config', Config)
+            table = open_file.get_node('/config')
             config = table.row
-            config['channel'] = channel
-            config['hv'] = HVobs
-            config['mainboard'] = options.mbsnum
-            config['flashid'] = session.flashID()
+            config['mainboard'] = str(options.mbsnum)
+            config['flashid'] = str(session.flashID())
             config['fpgaVersion'] = session.fpgaVersion()
             config['MCUVersion'] = session.softwareVersion()
+            config['triggermode'] = mode 
+            config['baselinedac'] = setdacvalue
+            config.append()
+            table.flush()
 
     else: 
         print("File already exists! Try again. Exit.") 
@@ -160,9 +151,8 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
             print('Timeout! Ending waveform stream and exiting')
             session.endStream()
             index = index + 1
-            beginWFstream(session, options, channel, testRun, threshold, feplsr)
+            mode = beginWFstream(session, options, channel, testRun, threshold, feplsr)
             continue
-        #print(readout)
 
         # Check for timeout
         if readout is None:
@@ -179,7 +169,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
         pc_time = time.time()
 
         tot = readout["thresholdFlags"]
-
+        
         # Write to hdf5 file
         with tables.open_file(filename, 'a') as open_file:
             try: 
@@ -192,6 +182,9 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
                     timestamp = tables.Int64Col()
                     pc_time = tables.Float32Col()
                     thresholdFlags = tables.Int32Col(shape=np.asarray(xdata).shape)
+                    temperature = tables.Float32Col()
+                    hv = tables.Float32Col()
+                    channel = tables.Int32Col()
                 table = open_file.create_table('/', 'data', Event)
                 table = open_file.get_node('/data')
 
@@ -202,6 +195,9 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
             event['timestamp'] = timestamp 
             event['pc_time'] = pc_time 
             event['thresholdFlags'] = tot
+            event['temperature'] = readSloAdcChannel(session,7)
+            event['channel'] = channel
+            event['hv'] = session.readSloADC_HVS_Voltage(channel)
             event.append()
             table.flush()
 
@@ -239,21 +235,29 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     return 
 
 def beginWFstream(session, options, channel, testRun, threshold, feplsr):
+    mode = ""
     if options.external and testRun==0:
         print('Notice: This is external trigger mode.')
         session.startDEggExternalTrigStream(channel)
+        mode = "external"
     elif feplsr > 0: 
         print('Notice: This is FE pulser mode.')
         session.startDEggThreshTrigStream(channel,threshold)
+        mode = "threshold"
     elif threshold > 0: 
         print(f'Notice: This is threshold trigger mode with threshold:{threshold}.')
         session.startDEggThreshTrigStream(channel,threshold)
+        mode = "threshold"
     elif options.threshold is None:
         print('Notice: This is software trigger mode.')
         session.startDEggSWTrigStream(channel, int(options.swTrigDelay))
+        mode = "software"
     else:
         print('Notice: This is threshold trigger mode.')
         session.startDEggThreshTrigStream(channel, int(options.threshold))
+        mode = "threshold"
+
+    return mode
 
 if __name__ == "__main__":
     parser = getParser()
