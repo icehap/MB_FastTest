@@ -34,3 +34,6 @@ def AddParser(parser):
                       help="Subtract FPGA baseline", default=False)
     parser.add_option("--bsthres", dest="bsthres", 
                       help="Threshold above baseline", default=None) 
+    parser.add_option("--sppath",help="Set specific path", default=None)
+    parser.add_option("--comment",help="Comment added to the output file name",default="")
+    parser.add_option("--iter",help="Iteration count", default=50)
