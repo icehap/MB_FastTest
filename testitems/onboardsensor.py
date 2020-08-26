@@ -12,7 +12,7 @@ def main(parser,path="."):
     (options, args) = parser.parse_args()
     loadFPGA(parser)
     session = startIcebootSession(parser)
-    filename = f'OnboardSensors{options.comment}.hdf5'
+    filename = f'{path}/OnboardSensors{options.comment}.hdf5'
 
     axels = []
     magns = []
