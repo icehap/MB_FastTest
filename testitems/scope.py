@@ -143,8 +143,7 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     i = 0
     index = 0
     while (True):
-        if i % 100 == 0: 
-            print(f"Event: {i}")
+        print('\rEvent: %d' % i,end='')
         try:
             readout = parseTestWaveform(session.readWFMFromStream())
         except IOError:
@@ -212,13 +211,15 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
             plt.axis([0, len(wf), max(wf) - wfrange * 1.2, min(wf) + wfrange * 1.2])
         else:
             plt.axis([0, len(wf), int(options.adcMin), int(options.adcMin) + int(options.adcRange)])
-        fig.canvas.draw()
-        fig.canvas.flush_events()
-        #plt.pause(0.001)
-        time.sleep(0.001)
+
+        if options.b: 
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+            #plt.pause(0.001)
+            time.sleep(0.001)
 
         if i >= nevents:
-            print("Reached end of run - exiting...")
+            print("\nReached end of run - exiting...")
             session.endStream()
             session.disableFEPulser(channel)
             #session.disableHV(channel)
