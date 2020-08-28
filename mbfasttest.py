@@ -17,7 +17,6 @@ import hvcheck
 from addparser_iceboot import AddParser
 
 def main():
-    print ("test")
     parser = getParser()
     scope.AddParser(parser)
 
@@ -32,11 +31,11 @@ def main():
     date = datetime.date.today()
     index = 1
     prepath = f'results/FastTest/{snum}/{date}/Run'
-    path = prepath + str(index)
+    path = f'{prepath}{index}'
 
     while os.path.isdir(path): 
         index = index + 1 
-        path = prepath + str(index)
+        path = f'{prepath}{index}'
     
     print(f'=== File path is: {path}. ===')
     os.system(f'mkdir -p {path}')
@@ -89,10 +88,6 @@ def rep_sensor(parser):
     
     SECTIONNAME = r'''\section{Slow Monitoring and Sensors}'''
 
-    #citems = ['+1V1 Current','+1V35 Current', '+1V8 Current', '+2V5 Current', '+3V3 Current', '+1V8\_A Voltage', 'Light Sensor', 'Temperature', 'HV ch0 Voltage', 'HV ch0 Current', 'HV ch1 Voltage', 'HV ch1 Current', '+1V1 Voltage', '+1V35 Voltage', '+2V5 Voltage', '+3V3 Voltage', 'Pressure']
-    #units = ['~mA', '~mA', '~mA', '~mA', '~mA', '~V', '~mV', '${}^{\circ}$C', '~V', '~$\mu$A', '~V', '~$\mu$A', '~V', '~V', '~V', '~V', '~hPa']
-    #criteriapres = 'Pressure    & $' + str(thresMin[16]) + '\leq x \leq ' + str(thresMax[16]) + '$ & ' + str(out[16]) + ' & \judgemark{' + str(outbool[16]) + '} '  
-
     CONTENTSBEGIN = r'''
 \begin{table}[h]
 \centering
@@ -103,7 +98,6 @@ SLO ADC or Sensor & \multicolumn{3}{c}{Criteria}  & \multicolumn{1}{c}{Observed}
 \midrule ''' 
 
     omittest = [0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0]
-    #omittest = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     if int(options.hven) == 0: # HV0 enabled, HV1 disabled
         omittest[8] = 0
         omittest[9] = 0
