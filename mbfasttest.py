@@ -245,7 +245,12 @@ ADC Ch\# & Criteria & \multicolumn{1}{c}{Min(Obs)} & Acceptance \\
 
 def getConfInfo(parser):
     (options, args) = parser.parse_args()
-    fwVer, swVer, flashLS, swid, fpgaId, flashId = fwswversion.main(parser)
+    isLoaded = 0
+    while isLoaded==0: 
+        fwVer, swVer, flashLS, swid, fpgaId, flashId = fwswversion.main(parser)
+        print(f'{fpgaId}, {fpgaId!="0xffffffffffffffff"}')
+        if fpgaId!="0xffffffffffffffff": 
+            isLoaded = 1
 
     CONTENTS = r'''
 \section{Test Configuration} 

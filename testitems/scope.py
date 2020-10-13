@@ -19,7 +19,15 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     (options, args) = parser.parse_args()
 
     print('Start the session.')
-    session = startIcebootSession(parser)
+    isLoaded = 0
+    while not isLoaded:
+        try: 
+            session = startIcebootSession(parser)
+        except: 
+            print("Loading failed. Try again...")
+        else: 
+            isLoaded = 1
+
     trial = 0
     while session.fpgaVersion()==65535:
         session.close()

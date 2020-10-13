@@ -36,6 +36,7 @@ def main(parser):
     print (f'FPGA: {FpgaId} with Firmware ver.{hex(FpgaVersion)}, Flash ID: {FlashId}, ' +  
             f'Software ver.{hex(SoftwareVersion)} with ID {SoftwareId}. ')
 
+    session.close()
     return FpgaVersion, SoftwareVersion, flashLS, SoftwareId, FpgaId, FlashId
 
 if __name__ == "__main__":
