@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo 'export PYTHONPATH for the package. Please add STM32Tools/python manually if failed.'
+echo 'export PYTHONPATH for the package. Please add STM32Tools/python manually.'
 
-export PYTHONPATH=$PYTHONPATH:$PWD/testitems:$PWD/tools/python
+export PYTHONPATH=$PYTHONPATH:$PWD/testitems
 export FTHOME=$PWD
