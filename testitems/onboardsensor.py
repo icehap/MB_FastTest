@@ -8,11 +8,11 @@ import numpy as np
 import time
 import tables 
 
-def main(parser,path="."):
+def main(parser,path=".",comment=""):
     (options, args) = parser.parse_args()
     loadFPGA(parser)
     session = startIcebootSession(parser)
-    filename = f'{path}/OnboardSensors{options.comment}.hdf5'
+    filename = f'{path}/OnboardSensors{comment}{options.comment}.hdf5'
 
     axels = []
     magns = []
@@ -109,7 +109,7 @@ def main(parser,path="."):
     print(f'MeanPres: {meanpres}, ErrPres: {errpres}')
     print(f'MeanTemp: {meantemp}, ErrTemp: {errtemp}')
     
-    return 
+    return [meanaxel, erraxel], [meanmagn, errmagn], [meanpres, errpres], [meantemp, errtemp]
 
 if __name__ == "__main__":
     parser = getParser()
