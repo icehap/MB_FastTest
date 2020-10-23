@@ -20,6 +20,15 @@ def main(parser,path=".",comment=""):
     temps = []
     absaxels = []
     absmagns = []
+
+    session.enableCalibrationPower()
+    session.setCalibrationSlavePowerMask(1)
+    session.setCameraEnableMask(0xFF)
+    time.sleep(1)
+    session.setCalibrationSlavePowerMask(2)
+    session.enableCalibrationTrigger(1000)
+    session.setFlasherMask(0xFFFF)
+    session.setFlasherBias(0xFFFF)
     
     for i in range(int(options.iter)): 
         axeldata = session.readAccelerometerXYZ()
@@ -104,10 +113,12 @@ def main(parser,path=".",comment=""):
         summary.append()
         table.flush()
 
-    print(f'MeanAxel: {meanaxel}, ErrAxel: {erraxel}')
-    print(f'MeanMagn: {meanmagn}, ErrMagn: {errmagn}')
-    print(f'MeanPres: {meanpres}, ErrPres: {errpres}')
-    print(f'MeanTemp: {meantemp}, ErrTemp: {errtemp}')
+    print(f'MeanAxel: {meanaxel} m/s2, ErrAxel: {erraxel}')
+    print(f'MeanMagn: {meanmagn} T, ErrMagn: {errmagn}')
+    print(f'MeanPres: {meanpres:.6g} hPa , ErrPres: {errpres}')
+    print(f'MeanTemp: {meantemp:.6g} degC, ErrTemp: {errtemp}')
+
+    session.disableCalibrationPower()
     
     return [meanaxel, erraxel], [meanmagn, errmagn], [meanpres, errpres], [meantemp, errtemp]
 
