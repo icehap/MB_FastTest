@@ -15,6 +15,7 @@ import sensorcheck
 import pulserCalib
 import hvcheck
 from addparser_iceboot import AddParser
+import onboardsensor
 
 def main():
     parser = getParser()
@@ -53,6 +54,7 @@ def makereport(parser,snum,path='.'):
 
     finalacc = 1
     sensorreport, sensorbool = rep_sensor(parser)
+    i2csensorrep = rep_I2Csensor(parser,path)
     finalacc *= sensorbool
     dacscanreport, dacscanbool = rep_dacscan(parser,path)
     finalacc *= dacscanbool
@@ -65,6 +67,7 @@ def makereport(parser,snum,path='.'):
     ### add contents below
     f.write(inforeport)
     f.write(sensorreport)
+    f.write(i2csensorrep)
     f.write(dacscanreport)
     f.write(pulserreport)
     if int(options.hven)!=-1: 
@@ -131,6 +134,31 @@ SLO ADC or Sensor & \multicolumn{3}{c}{Criteria}  & \multicolumn{1}{c}{Observed}
         CONTENTS = SECTIONNAME + FAIL + CONTENTS
 
     return CONTENTS, result
+
+def rep_I2Csensor(parser,path='testitems'):
+    axel, magn, pres, temp = onboardsensor.main(parser,path)
+    (options, args) = parser.parse_args()
+
+    meanmagn = magn[0][3]*1e9
+    errmmagn = magn[1][3]*1e9
+
+    CONTENTS = r'''
+\begin{table}[h]
+\centering
+\caption{Mean outputs from I$^2$C sensors.}
+\begin{tabular}{crcll}
+\toprule
+Sensor & \multicolumn{4}{c}{Observed Value} \\
+\midrule
+Accelerometer & ''' + f'{axel[0][3]:.4f}' + r' & \makebox[0pt][c]{$\pm$} & ' + f'{axel[1][3]:.4f}' + r''' & m$/$s$^2$ \\
+Magnetometer  & ''' + f'{meanmagn:.4f}' + r' & \makebox[0pt][c]{$\pm$} & ' + f'{errmmagn:.4f}' + r''' & nT\\
+Pressure      & ''' + f'{pres[0]:.4f}' + r' & \makebox[0pt][c]{$\pm$} & ' + f'{pres[1]:.4f}' + r''' & hPa \\
+Temperature   & ''' + f'{temp[0]:.4f}' + r' & \makebox[0pt][c]{$\pm$} & ' + f'{temp[1]:.4f}' + r''' & $^\circ$C \\
+\bottomrule
+\end{tabular}
+\end{table} ''' 
+
+    return CONTENTS
 
 def rep_pulser(parser,path='testitems'):
     results, minvalues = pulserCalib.pulserCalib(parser,path)

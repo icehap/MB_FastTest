@@ -8,11 +8,11 @@ import numpy as np
 import time
 import tables 
 
-def main(parser,path="."):
+def main(parser,path=".",comment=""):
     (options, args) = parser.parse_args()
     loadFPGA(parser)
     session = startIcebootSession(parser)
-    filename = f'{path}/OnboardSensors{options.comment}.hdf5'
+    filename = f'{path}/OnboardSensors{comment}{options.comment}.hdf5'
 
     axels = []
     magns = []
@@ -20,6 +20,15 @@ def main(parser,path="."):
     temps = []
     absaxels = []
     absmagns = []
+
+    session.enableCalibrationPower()
+    session.setCalibrationSlavePowerMask(1)
+    session.setCameraEnableMask(0xFF)
+    time.sleep(1)
+    session.setCalibrationSlavePowerMask(2)
+    session.enableCalibrationTrigger(1000)
+    session.setFlasherMask(0xFFFF)
+    session.setFlasherBias(0xFFFF)
     
     for i in range(int(options.iter)): 
         axeldata = session.readAccelerometerXYZ()
@@ -104,12 +113,14 @@ def main(parser,path="."):
         summary.append()
         table.flush()
 
-    print(f'MeanAxel: {meanaxel}, ErrAxel: {erraxel}')
-    print(f'MeanMagn: {meanmagn}, ErrMagn: {errmagn}')
-    print(f'MeanPres: {meanpres}, ErrPres: {errpres}')
-    print(f'MeanTemp: {meantemp}, ErrTemp: {errtemp}')
+    print(f'MeanAxel: {meanaxel} m/s2, ErrAxel: {erraxel}')
+    print(f'MeanMagn: {meanmagn} T, ErrMagn: {errmagn}')
+    print(f'MeanPres: {meanpres:.6g} hPa , ErrPres: {errpres}')
+    print(f'MeanTemp: {meantemp:.6g} degC, ErrTemp: {errtemp}')
+
+    session.disableCalibrationPower()
     
-    return 
+    return [meanaxel, erraxel], [meanmagn, errmagn], [meanpres, errpres], [meantemp, errtemp]
 
 if __name__ == "__main__":
     parser = getParser()
