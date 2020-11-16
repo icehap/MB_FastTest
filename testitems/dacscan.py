@@ -30,7 +30,7 @@ def dacscan(parser, path='.'):
         scope.main(parser,0,int(dacvalue10[i]), path)
         scope.main(parser,1,int(dacvalue10[i]), path)
 
-    result, minvalues = mkplot.mkplot(datapath)
+    result, minvalues = mkplot.mkplot(datapath,options.b)
 
     return result, minvalues
 

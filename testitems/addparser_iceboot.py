@@ -38,3 +38,4 @@ def AddParser(parser):
     parser.add_option("--comment",help="Comment added to the output file name",default="")
     parser.add_option("--iter",help="Iteration count", default=50)
     parser.add_option("-b",action="store_false",default=True)
+    parser.add_option("--degg",action="store_true",default=False)

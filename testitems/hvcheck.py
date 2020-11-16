@@ -3,6 +3,8 @@
 from iceboot.iceboot_session import getParser, startIcebootSession 
 from addparser_iceboot import AddParser
 import time
+import tables
+import os
 import numpy as np 
 import matplotlib.pyplot as plt 
 from mkplot import plotSetting
@@ -22,8 +24,9 @@ def main(parser,path='.'):
 
     datapath = f'{path}/raw'
 
+
     for channel in range(2):
-        hvvobs0, hvcobs0, hvverr0, hvcerr0 = getLists(session,HVsettings,channel)
+        hvvobs0, hvcobs0, hvverr0, hvcerr0 = getLists(session,HVsettings,channel,datapath)
 
         plotSetting(plt)
         plt.rcParams['figure.figsize'] = [8.0,7.0]
@@ -64,8 +67,9 @@ def main(parser,path='.'):
         axr.errorbar(HVsettings,diffhv,hvverr0,fmt='o-',color='black')
         axr.set_ylim(-7,7)
         
-        fig.canvas.draw()
-        fig.canvas.flush_events()
+        if options.b: 
+            fig.canvas.draw()
+            fig.canvas.flush_events()
         plt.savefig(f'{datapath}/hv_{channel}.pdf')
 
     session.setDEggHV(0,0)
@@ -76,7 +80,7 @@ def main(parser,path='.'):
     return ['hv_0.pdf','Comparison between set and observed HV values for channel 0.', 
             'hv_1.pdf','Comparison between set and observed HV values for channel 1.']
 
-def getLists(session, HVsettings, channel):
+def getLists(session, HVsettings, channel, datapath='.'):
     hvvobs = []
     hvcobs = []
     hvverr = []
@@ -102,6 +106,30 @@ def getLists(session, HVsettings, channel):
         hvcobs.append(np.mean(hvcurs))
         hvverr.append(np.std(hvvols))
         hvcerr.append(np.std(hvcurs))
+
+        with tables.open_file(f'{datapath}/hv.hdf5','a') as open_file: 
+            try: 
+                table = open_file.get_node('/hvmon')
+            except: 
+                class HVmon(tables.IsDescription):
+                    channel = tables.Int32Col()
+                    HVVset = tables.Int32Col()
+                    HVVobs = tables.Float32Col()
+                    HVVerr = tables.Float32Col()
+                    HVCobs = tables.Float32Col()
+                    HVCerr = tables.Float32Col()
+                table = open_file.create_table('/','hvmon',HVmon)
+                table = open_file.get_node('/hvmon')
+
+            hvmon = table.row
+            hvmon['channel'] = channel
+            hvmon['HVVset'] = HVsettings[i]
+            hvmon['HVVobs'] = np.mean(hvvols)
+            hvmon['HVVerr'] = np.std(hvvols)
+            hvmon['HVCobs'] = np.mean(hvcurs)
+            hvmon['HVCerr'] = np.std(hvcurs)
+            hvmon.append()
+            table.flush()
 
         print(f'Setting: {HVsettings[i]} V,  Obs.: {np.mean(hvvols):.03f} +/- {np.std(hvvols):.03f} V, {np.mean(hvcurs):.03f} +/- {np.std(hvcurs):.03f} uA')
     
