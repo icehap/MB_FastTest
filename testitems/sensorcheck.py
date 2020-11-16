@@ -38,6 +38,10 @@ def main(parser):
     targetMax = [1000,500,500,500,500,1.9,5000,35,int(options.hvv)+5,200,int(options.hvv)+5,200,1.2,1.45,2.6,3.4,1200]
     targetMin = [  10, 10, 10, 10, 10,1.7,   0, 5,int(options.hvv)-5,  0,int(options.hvv)-5,  0,1.0,1.25,2.4,3.2, 900]
 
+    if options.degg: 
+        targetMax[16] = 850
+        targetMin[16] = 300
+
     outputs = []
     outbool = []
 

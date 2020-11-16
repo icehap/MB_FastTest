@@ -6,7 +6,7 @@ import os
 import glob
 from natsort import natsorted
 
-def mkplot(path):
+def mkplot(path,silent=True):
     plotSetting(plt)
 
     plt.ion()
@@ -40,9 +40,10 @@ def mkplot(path):
         ymax = (max(y)+max(yerr))+1
     plt.ylim(0,ymax)
     plt.legend()
-    fig.canvas.draw()
-    fig.canvas.flush_events()
-    plt.pause(0.001)
+    if silent: 
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+        plt.pause(0.001)
     plt.savefig(path+'/DACscanPlot.pdf')
 
     y0 = ydata[0]
@@ -59,9 +60,10 @@ def mkplot(path):
         plt.plot(minFFT[0],minFFT[1],color=chcolors[channel],label=f'Ch{channel}')
         plt.xlim(0,120)
         plt.legend()
-        fig.canvas.draw()
-        fig.canvas.flush_events()
-        plt.pause(0.001)
+        if silent: 
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+            plt.pause(0.001)
         plt.savefig(path+'/DACscanFFT'+str(channel)+'Plot.pdf')
 
     # Max FFT plot
@@ -74,9 +76,10 @@ def mkplot(path):
         plt.plot(maxFFT[0],maxFFT[1],color=chcolors[channel],label=f'Ch{channel}')
         plt.xlim(0,120)
         plt.legend()
-        fig.canvas.draw()
-        fig.canvas.flush_events()
-        plt.pause(0.001)
+        if silent: 
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+            plt.pause(0.001)
         plt.savefig(path+'/DACscanMFFT'+str(channel)+'Plot.pdf')
 
     retvalue = []

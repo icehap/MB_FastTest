@@ -44,7 +44,7 @@ def pulserCalib(parser, path='.'):
         scope.main(parser,0,-1,path,dacvalue10[i],threshold0)
         scope.main(parser,1,-1,path,dacvalue10[i],threshold1)
 
-    result, minvalues = mkplot_pc(datapath)
+    result, minvalues = mkplot_pc(parser, datapath)
 
     return result, minvalues
 
@@ -67,7 +67,8 @@ def getThreshold(parser, channel, baselineset, thresholdset, path):
     return baseline + thresholdset
 
 
-def mkplot_pc(path):
+def mkplot_pc(parser, path):
+    (options, args) = parser.parse_args()
     plotSetting(plt)
 
     plt.ion()
@@ -99,8 +100,9 @@ def mkplot_pc(path):
     plt.xlim(0,70000)
     plt.ylim(0,560)
     plt.legend()
-    fig.canvas.draw()
-    plt.pause(0.001)
+    if options.b: 
+        fig.canvas.draw()
+        plt.pause(0.001)
     plt.savefig(f'{path}/PlsrCalibPlot.pdf')
 
     fig = plt.figure()
@@ -113,8 +115,10 @@ def mkplot_pc(path):
     if (len(waveform) < 256): 
         maxx = len(waveform)
     plt.xlim(0,maxx)
-    fig.canvas.draw()
-    plt.pause(0.001)
+
+    if options.b: 
+        fig.canvas.draw()
+        plt.pause(0.001)
     plt.savefig(f'{path}/PlsrCalib_WF.pdf')
 
     return 0, 0 
