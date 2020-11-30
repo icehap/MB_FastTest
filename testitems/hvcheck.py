@@ -27,7 +27,7 @@ def main(parser,path='.'):
 
 
     for channel in range(2):
-        hvvobs0, hvcobs0, hvverr0, hvcerr0 = getLists(session,HVsettings,channel,datapath)
+        hvvobs0, hvcobs0, hvverr0, hvcerr0 = getLists(session,HVsettings,channel,hvbnums,datapath)
 
         plotSetting(plt)
         plt.rcParams['figure.figsize'] = [8.0,7.0]
@@ -81,7 +81,7 @@ def main(parser,path='.'):
     return [f'hv{hvbnums[0]}_0.pdf','Comparison between set and observed HV values for channel 0.', 
             f'hv{hvbnums[1]}_1.pdf','Comparison between set and observed HV values for channel 1.']
 
-def getLists(session, HVsettings, channel, datapath='.'):
+def getLists(session, HVsettings, channel, hvbnums, datapath='.'):
     hvvobs = []
     hvcobs = []
     hvverr = []
