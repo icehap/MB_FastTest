@@ -13,6 +13,7 @@ from loadFPGA import loadFPGA
 
 def main(parser,path='.'):
     (options, args) = parser.parse_args()
+    hvbnums = (options.hvbnums).split(',')
 
     session = startIcebootSession(parser)
     
@@ -70,15 +71,15 @@ def main(parser,path='.'):
         if options.b: 
             fig.canvas.draw()
             fig.canvas.flush_events()
-        plt.savefig(f'{datapath}/hv_{channel}.pdf')
+        plt.savefig(f'{datapath}/hv{hvbnums[channel]}_{channel}.pdf')
 
     session.setDEggHV(0,0)
     session.setDEggHV(1,0)
     session.disableHV(0)
     session.disableHV(1)
 
-    return ['hv_0.pdf','Comparison between set and observed HV values for channel 0.', 
-            'hv_1.pdf','Comparison between set and observed HV values for channel 1.']
+    return [f'hv{hvbnums[0]}_0.pdf','Comparison between set and observed HV values for channel 0.', 
+            f'hv{hvbnums[1]}_1.pdf','Comparison between set and observed HV values for channel 1.']
 
 def getLists(session, HVsettings, channel, datapath='.'):
     hvvobs = []
@@ -107,7 +108,7 @@ def getLists(session, HVsettings, channel, datapath='.'):
         hvverr.append(np.std(hvvols))
         hvcerr.append(np.std(hvcurs))
 
-        with tables.open_file(f'{datapath}/hv.hdf5','a') as open_file: 
+        with tables.open_file(f'{datapath}/hv{hvbnums[0]}_{hvbnums[1]}.hdf5','a') as open_file: 
             try: 
                 table = open_file.get_node('/hvmon')
             except: 
@@ -145,6 +146,14 @@ def readSloAdcChannel(session, channel):
 if __name__ == "__main__":
     parser = getParser()
     AddParser(parser)
+    (options, args) = parser.parse_args()
+    hvbnums = (options.hvbnums).split(',')
+    if len(hvbnums)!=2: 
+        print("Please set --hvbnums like '100,101'... Quit.")
+        exit(1)
+
     loadFPGA(parser)
-    main(parser)
+    path = os.getenv('FTHOME') + f'/results/HVCheck/{options.mbsnum}'
+    os.system(f'mkdir -p {path}/raw')
+    main(parser,path)
     
