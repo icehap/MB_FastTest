@@ -26,7 +26,7 @@ def main():
     event_ids = getDataCol('event_id',data)
     waveforms = getDataCol('waveform',data)
     times = getDataCol('time',data)
-    timestamps = getDatCol('timestamp',data)
+    timestamps = getDataCol('timestamp',data)
     thresFlags = getDataCol('thresholdFlags',data)
     i_1V1  = getDataCol('i_1V1' ,data)
     i_1V35 = getDataCol('i_1V35',data)
