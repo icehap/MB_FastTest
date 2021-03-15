@@ -39,3 +39,4 @@ def AddParser(parser):
     parser.add_option("--iter",help="Iteration count", default=50)
     parser.add_option("-b",action="store_false",default=True)
     parser.add_option("--degg",action="store_true",default=False)
+    parser.add_option("--hvbnums",help="HVB S/N, set like '100,101' (for ch0 and 1, respectively)",default=",")

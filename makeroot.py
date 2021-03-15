@@ -3,6 +3,7 @@
 import tables
 import os
 import sys
+import gc
 import numpy as np
 from ROOT import TFile, TH1D, gROOT, gDirectory, TGraphErrors, TCanvas
 from argparse import ArgumentParser
@@ -17,13 +18,26 @@ def main():
     os.system('mkdir -p plots')
 
     f = tables.open_file(filename)
+    print(f"Successfully opened file: {filename}.")
 
     data = f.get_node('/data')
-    event_ids = data.col('event_id')
-    times = data.col('time')
-    waveforms = data.col('waveform')
-    timestamps = data.col('timestamp')
-    thresFlags = data.col('thresholdFlags') # added. If observe errors, please comment it out. 
+    print("Read /data")
+
+    event_ids = getDataCol('event_id',data)
+    waveforms = getDataCol('waveform',data)
+    times = getDataCol('time',data)
+    timestamps = getDataCol('timestamp',data)
+    thresFlags = getDataCol('thresholdFlags',data)
+    i_1V1  = getDataCol('i_1V1' ,data)
+    i_1V35 = getDataCol('i_1V35',data)
+    i_1V8  = getDataCol('i_1V8' ,data)
+    i_2V5  = getDataCol('i_2V5' ,data)
+    i_3V3  = getDataCol('i_3V3' ,data)
+    v_1V1  = getDataCol('v_1V1' ,data)
+    v_1V35 = getDataCol('v_1V35',data)
+    v_1V8  = getDataCol('v_1V8' ,data)
+    v_2V5  = getDataCol('v_2V5' ,data)
+    v_3V3  = getDataCol('v_3V3' ,data)
 
     nsamples = len(waveforms[0])
     fq = np.linspace(0,240,nsamples)
@@ -59,6 +73,10 @@ def main():
     rmstime = TGraphErrors()
     rmstime.SetName('rmstime')
     rmstime.SetTitle('rmstime;Unix time [s];RMS Noise [LSB]')
+    powerc = TGraphErrors()
+    powerc.SetName('powerc')
+    powerc.SetTitle('powerc;Event Number;Power Consumption [W]')
+    h_powerc = TH1D('h_powerc','h_powerc;Power Consumption [W];Entry',100,0,5)
     
     winmin = args.minimum
     winmax = args.minimum + args.window
@@ -76,7 +94,14 @@ def main():
     fltwfs = []
     starttimestamp = timestamps[0]
 
-    for i in tqdm(range(len(waveforms))):
+    procN = len(waveforms)
+    if args.nevents > 0: 
+        procN = args.nevents
+
+    for i in tqdm(range(procN)):
+        if i < args.nskip: 
+            continue
+
         waveform = waveforms[i]
         timestamp = timestamps[i]
 
@@ -123,6 +148,8 @@ def main():
         ######
 
         baseline_mean = np.mean(waveform[bsstart:nsamples])
+        if args.fixbs: 
+            baseline_mean = globalmean
 
         center = int(baseline_mean)
         proj = TH1D(f'proj{i}',f'Projection waveform{i};ADC count;Entry',300,center-150,center+150)
@@ -156,26 +183,36 @@ def main():
             h2.Fill(j,waveform[j])
         #h2.Draw("hist")
 
-        if np.max(F2_abs_amp[1:int(len(F2_abs_amp)/2.+1)]) > 0.5:
-            c.SetLogy(0)
-            h2.SetLineColor(4)
-            h2.Draw("hist")
-            c.Print(f"plots/w{i}.pdf(")
-            c.SetLogy(1)
-            hfft.SetLineColor(4)
-            hfft.Draw("hist")
-            c.Print(f"plots/w{i}.pdf)")
+        #if np.max(F2_abs_amp[1:int(len(F2_abs_amp)/2.+1)]) > 0.5:
+        #    c.SetLogy(0)
+        #    h2.SetLineColor(4)
+        #    h2.Draw("hist")
+        #    c.Print(f"plots/w{i}.pdf(")
+        #    c.SetLogy(1)
+        #    hfft.SetLineColor(4)
+        #    hfft.Draw("hist")
+        #    c.Print(f"plots/w{i}.pdf)")
 
         htot = TH1D(f'thresflags{i}','ThresholdFlags{i};Sampling Bin;Threshold Flag',nsamples,0,nsamples)
         for j in range(len(thresFlags[i])):
             htot.Fill(j,thresFlags[i][j])
 
-        if max(waveform) - np.mean(waveform[bsstart:nsamples]) < args.threshold:
+        if max(waveform) - baseline_mean < args.threshold:
             continue
 
         fltwfs.append(waveform)
 
         if args.silent: 
+            del hfft
+            del hfft2
+            del h2
+            del htot
+            del proj 
+            del waveform 
+            del timestamp
+            del F
+            del F2
+            gc.collect()
             continue
 
         subdir2.cd()
@@ -191,6 +228,14 @@ def main():
         htot.Write()
 
     print('')
+
+    for i in range(len(i_1V1)): 
+        internal_power = v_1V1[i]*i_1V1[i] + v_1V35[i]*i_1V35[i] + v_1V8[i]*i_1V8[i] + v_2V5[i]*i_2V5[i] + v_3V3[i]*i_3V3[i]
+        n = powerc.GetN()
+        powerc.Set(n+1)
+        powerc.SetPoint(n, i, internal_power*1e-3)
+        powerc.SetPointError(n, 0, 0)
+        h_powerc.Fill(internal_power*1e-3)
 
     avgfltwfs = np.mean(fltwfs, axis=0)
     for i in range(len(avgfltwfs)): 
@@ -233,6 +278,8 @@ def main():
     bsshift.Write()
     nrshift.Write()
     rmsshift.Write()
+    powerc.Write()
+    h_powerc.Write()
 
     of.Close()
     f.close()
@@ -243,6 +290,16 @@ def doFFT(wf):
     F_abs_amp = F_abs / len(wf) * 2
     F_abs_amp[0] = F_abs_amp[0] / 2
     return F_abs_amp 
+
+def getDataCol(colname, hdfnode): 
+    try: 
+        coldata = hdfnode.col(colname)
+    except:
+        coldata = np.array([])
+        print("Warning: Unabled to read {colname}.")
+    else: 
+        print(f"Read column: {colname}.")
+    return coldata
 
 def parser():
     argparser = ArgumentParser()
@@ -260,6 +317,9 @@ def parser():
                            type=int, default=160, 
                            help='Starting point of the window to evaluate the baseline value. ')
     argparser.add_argument('-s','--silent', action='store_false')
+    argparser.add_argument('-n','--nevents', default=-1, type=int, help='Number of process events.')
+    argparser.add_argument('--nskip', default=-1, type=int, help='Number of skipping events. Should be larger than --nevents.')
+    argparser.add_argument('--fixbs', action='store_true')
 
     return argparser.parse_args()
 
