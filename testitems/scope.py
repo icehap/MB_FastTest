@@ -82,8 +82,8 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
     if int(options.hvv) > 0:
         if int(nSamples) > 128:
             session.setDEggConstReadout(channel, 4, int(nSamples))
-        session.setDEggHV(channel,int(options.hvv))
         session.enableHV(channel)
+        session.setDEggHV(channel,int(options.hvv))
         time.sleep(1)
         HVobs = session.readSloADC_HVS_Voltage(channel)
         print(f'Observed HV Supply Voltage for channel {channel}: {HVobs} V.')
