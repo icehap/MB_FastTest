@@ -40,3 +40,10 @@ def AddParser(parser):
     parser.add_option("-b",action="store_false",default=True)
     parser.add_option("--degg",action="store_true",default=False)
     parser.add_option("--hvbnums",help="HVB S/N, set like '100,101' (for ch0 and 1, respectively)",default=",")
+    
+    # for the charge stamp measurements
+    parser.add_option("--hv0", help="HV for channel 0",type="int", default=None)
+    parser.add_option("--hv1", help="HV for channel 1",type="int", default=None)
+    parser.add_option("--measure_baselines", help="measure baselines before the main measurement for both channels", action="store_true", default=False)
+    parser.add_option("--preset_baseline0", help="Measured baseline can be set for channel 0", type="int", default=None)
+    parser.add_option("--preset_baseline1", help="Measured baseline can be set for channel 1", type="int", default=None)
