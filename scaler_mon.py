@@ -80,9 +80,6 @@ def doScaler(parser, path='.'):
 
     print(f'Set threshold: {threshold}')
 
-    #scope.main(parser,channel,path=path,threshold=threshold)
-
-    #getSpeCurve(parser, channel, datapath, baseline)
     durationUS = 100000
     counts = []
     session = startIcebootSession(parser)
@@ -96,7 +93,8 @@ def doScaler(parser, path='.'):
     time.sleep(5)
     for i in tqdm(range(int(options.nevents))):
         scaler_count = session.getScalerCount(channel)
-        #print(f'Iteration {i}: {scaler_count/durationUS*1e6} Hz')
+        if scaler_count > 100: 
+            tqdm.write(f'Iteration {i}: {scaler_count/durationUS*1e6} Hz')
         counts.append(int(scaler_count))
         time.sleep(durationUS/1e6)
 
@@ -108,71 +106,10 @@ def doScaler(parser, path='.'):
     plt.ylabel('Rate [Hz]')
     xdata = np.arange(len(npcounts))
     plt.plot(xdata,npcounts/durationUS*1e6,marker='o',ls='')
-    plt.savefig(f'{path}/nr_fig.pdf')
+    plt.savefig(f'{path}/nr_fig_{channel}.pdf')
     plt.show()
 
     return
-
-def getSpeCurve(parser, channel, path, baseline):
-    (options, args) = parser.parse_args()
-    filename = options.filename
-
-    plotSetting(plt)
-
-    plt.ion()
-    plt.show()
-
-    fig = plt.figure()
-    plt.xlabel("Integrated Charge [LSB]", ha='right', x=1.0)
-    plt.ylabel("Entry",ha='right', y=1.0)
-
-    datapath = f'{path}/{filename}'
-
-    charges, avgwf = getIntCharges(datapath, baseline)
-
-    plt.hist(charges, bins= 800, range=(-200, 600), color='blue', histtype="step", align="left")
-
-    fig.canvas.draw()
-    plt.savefig(f'{path}/hist.pdf')
-
-    plt.ylim(0,50)
-    fig.canvas.draw()
-    plt.savefig(f'{path}/histExpd.pdf')
-
-    fig = plt.figure()
-    plt.xlabel("Sampling Bins", ha='right', x=1.0)
-    plt.ylabel("ADC counts", ha='right', y=1.0)
-
-    x = np.arange(len(avgwf))
-    plt.plot(x, avgwf, color='blue')
-    plt.xlim(0,len(avgwf))
-    plt.savefig(f'{path}/avgwf.pdf')
-
-    return
-
-def getIntCharges(filename, baseline):
-    f = tables.open_file(filename)
-
-    data = f.get_node('/data')
-    event_ids = data.col('event_id')
-    times = data.col('time')
-    waveforms = data.col('waveform')
-
-    nsamples = len(waveforms[0])
-
-    charges = []
-
-    for i in range(len(waveforms)):
-        waveform = waveforms[i]
-        subtWf = waveform - baseline
-        charge = sum(subtWf[190:210])
-        charges.append(charge)
-
-    avgwf = np.mean(waveforms, axis=0)
-
-    f.close()
-
-    return charges, avgwf
 
 if __name__ == "__main__":
     parser = getParser()
