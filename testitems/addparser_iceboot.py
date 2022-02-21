@@ -47,3 +47,11 @@ def AddParser(parser):
     parser.add_option("--measure_baselines", help="measure baselines before the main measurement for both channels", action="store_true", default=False)
     parser.add_option("--preset_baseline0", help="Measured baseline can be set for channel 0", type="int", default=None)
     parser.add_option("--preset_baseline1", help="Measured baseline can be set for channel 1", type="int", default=None)
+
+    # for LED flashing
+    parser.add_option("--led", help="LED flasher on/off", action="store_true", default=False)
+    parser.add_option("--freq",type="int",default=5000)
+    parser.add_option("--intensity",type="int",default=0x6000)
+    parser.add_option("--flashermask",default="1-12")
+    parser.add_option("--specific",default=None)
+    parser.add_option("--scan",action="store_true",default=False)
