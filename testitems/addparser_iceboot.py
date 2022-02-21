@@ -55,3 +55,5 @@ def AddParser(parser):
     parser.add_option("--flashermask",default="1-12")
     parser.add_option("--specific",default=None)
     parser.add_option("--scan",action="store_true",default=False)
+    parser.add_option("--vscan",default=None)
+    parser.add_option("--fscan",default=None)
