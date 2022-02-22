@@ -89,27 +89,13 @@ def takeChargeStamp(parser, path='.'):
     
     session.startDEggExternalTrigStream(channel)
     
-    '''
-    if options.scan: 
-        for i in range(12):
-            if options.led: 
-                flashermask = setLEDon(i+1)
-                doLEDflashing(session, freq=options.freq, bias=options.intensity,flashermask=flashermask)
-            storeChargeStampData(session, options, path, flashermask, nevents, index=i+1)
-            time.sleep(2)
-    else:
-        if options.led:
-            doLEDflashing(session, freq=options.freq, bias=options.intensity, flashermask=setLEDon(options.flashermask))
-        storeChargeStampData(session, options, path, setLEDon(options.flashermask), nevents)
-    '''
-
     if options.scan:
         flashermasks = [setLEDon(i+1) for i in range(12)]
     else:
         flashermasks = [options.flashermask]
 
     if options.vscan is not None:
-        biases = [f'0x{i}' for i in str(options.vscan).split(',')]
+        biases = [int(f'{i}',16) for i in str(options.vscan).split(',')]
     else:
         biases = [options.intensity]
 
@@ -118,12 +104,14 @@ def takeChargeStamp(parser, path='.'):
     else:
         freqs = [options.freq]
 
+    index = 0
     for i in flashermasks:
         for j in biases:
             for k in freqs:
                 if options.led:
                     doLEDflashing(session, freq=k, bias=j, flashermask=i)
-                storeChargeStampData(session, channel, options.filename, path, i, j, k, nevents)
+                storeChargeStampData(session, channel, options.filename, path, i, j, k, nevents, index)
+                index += 1
                 time.sleep(2)
 
     session.disableHV(channel)
@@ -161,7 +149,6 @@ def storeChargeStampData(session, channel, filename, path, flashermask, intensit
                 chargestamp = tables.Float32Col(shape=np.asarray(charges).shape)
                 channel = tables.Int32Col()
                 hv = tables.Int32Col()
-                threshold = tables.Int32Col()
                 ledbias = tables.Int64Col()
                 ledmask = tables.Int64Col()
                 ledperiod = tables.Int64Col()
@@ -173,7 +160,6 @@ def storeChargeStampData(session, channel, filename, path, flashermask, intensit
         event['chargestamp'] = charges
         event['hv'] = HVobs
         event['channel'] = channel
-        event['threshold'] = -1
         event['ledbias'] = int(intensity)
         event['ledmask'] = int(flashermask)
         event['ledperiod'] = int(freq)
@@ -181,17 +167,6 @@ def storeChargeStampData(session, channel, filename, path, flashermask, intensit
         table.flush()
     
     fig = plt.figure()
-    plt.hist(charges, bins=880, range=(-1,10), label=f'Channel {channel}', histtype="step")
-    plt.xlabel('Charge [pC]')
-    plt.ylabel('Entries')
-    plt.xlim(-1,5)
-    plt.legend(title=f'HV: {HVobs:.2f} V \n#Events: {len(charges)} \nLED mask: {hex(flashermask)}\nLED bias: {hex(int(intensity))}\nLED period: {freq}\nDuration: {difftime:.2f} sec')
-    
-    plt.tight_layout()
-    plt.savefig(f'{path}/plots/SPEcharge{index}.pdf')
-    plt.yscale('log')
-    plt.savefig(f'{path}/plots/SPEcharge{index}_log.pdf')
-
     plt.hist(charges, bins=1000, range=(-10,max(charges)), histtype='step')
     plt.xlabel('Charge [pC]')
     plt.ylabel('Entries')
