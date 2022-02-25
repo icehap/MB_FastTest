@@ -61,7 +61,8 @@ def main(filepath, xmax, rebin, log, gain):
 
 @cli.command()
 @click.option('--filepath',type=str,required=True)
-def vscan(filepath):
+@click.option('--gain',default=None)
+def vscan(filepath,gain):
     fig = plt.figure(figsize=(8,4.8))
     filename = f'{filepath}/raw/test.hdf5'
     f = tables.open_file(filename)
@@ -73,23 +74,33 @@ def vscan(filepath):
     ledmask = data.col('ledmask')
     meancharge = np.mean(charges,axis=1)
     f.close()
+
+    if gain is not None:
+        ocom = 'PE'
+        factor = 1.6 * float(gain)
+        plt.ylabel('Observed Mean Charge [PE]')
+    else:
+        ocom = ''
+        factor = 1
+        plt.ylabel('Observed Mean Charge [pC]')
+
     for i in range(12):
         if len(ledbias[np.log2(ledmask)==i]) > 0:
-            plt.plot(ledbias[np.log2(ledmask)==i],meancharge[np.log2(ledmask)==i],lw=lws[i],label=f'LED{i+1}',color=cm.brg(i/12),ls='--')
+            plt.plot(ledbias[np.log2(ledmask)==i],meancharge[np.log2(ledmask)==i]/factor,lw=lws[i],label=f'LED{i+1}',color=cm.brg(i/12),ls='--')
 
     plt.title(f'Ch{channel[0]}, HV {np.mean(hv):.1f} V')
     plt.xlabel('Intensity Setting (hex)')
-    plt.ylabel('Observed Mean Charge [pC]')
     plt.legend(bbox_to_anchor=(1,1), loc='upper left')
     
     axes = plt.gca()
-    axes.get_xaxis().set_major_locator(ticker.MultipleLocator(2*16**2))
+    axes.get_xaxis().set_major_locator(ticker.MultipleLocator(2*16**3))
     axes.get_xaxis().set_major_formatter(ticker.FuncFormatter(lambda x, pos: '%x' % int(x)))
     
     plt.tight_layout()
-    plt.savefig(f'{filepath}/LEDlumi.pdf')
+    plt.savefig(f'{filepath}/LEDlumi{ocom}.pdf')
     plt.yscale('log')
-    plt.savefig(f'{filepath}/LEDlumi_log.pdf')
+    plt.tight_layout()
+    plt.savefig(f'{filepath}/LEDlumi{ocom}_log.pdf',bbox_inches="tight")
     plt.show()
 
 @cli.command()
@@ -135,6 +146,7 @@ def vscan_old(filepath):
     plt.tight_layout()
     plt.savefig(f'{filepath}/LEDlumi.pdf')
     plt.yscale('log')
+    plt.tight_layout()
     plt.savefig(f'{filepath}/LEDlumi_log.pdf')
     plt.show()
 
