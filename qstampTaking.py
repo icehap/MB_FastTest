@@ -87,15 +87,19 @@ def takeChargeStamp(parser, path='.'):
         HVobs = session.readSloADC_HVS_Voltage(channel)
         print(f'Observed HV Supply Voltages for channel {channel}: {HVobs} V.')
     
+    session.setDEggExtTrigSourceICM()
     session.startDEggExternalTrigStream(channel)
     
     if options.scan:
         flashermasks = [setLEDon(i+1) for i in range(12)]
     else:
-        flashermasks = [options.flashermask]
+        flashermasks = str(options.flashermask).split(',')
 
     if options.vscan is not None:
-        biases = [int(f'{i}',16) for i in str(options.vscan).split(',')]
+        if options.vscan == "DEFAULT":
+            biases = [0x5700,0x5800,0x5900,0x5A00,0x5B00,0x5C00,0x5D00,0x5E00,0x5F00,0x6000,0x6100,0x6200,0x6300,0x6400]
+        else:
+            biases = [int(f'{i}',16) for i in str(options.vscan).split(',')]
     else:
         biases = [options.intensity]
 
@@ -105,7 +109,13 @@ def takeChargeStamp(parser, path='.'):
         freqs = [options.freq]
 
     index = 0
-    for i in flashermasks:
+    for ii, i in enumerate(flashermasks):
+        if options.lscan=='horizontal':
+            if ii==1 or ii==4 or ii==7 or ii==10:
+                continue
+        elif options.lscan=='vertical':
+            if ii!=1 and ii!=4 and ii!=7 and ii!=10:
+                continue
         for j in biases:
             for k in freqs:
                 if options.led:
@@ -130,8 +140,24 @@ def storeChargeStampData(session, channel, filename, path, flashermask, intensit
     channel = int(channel)
     HVobs = session.readSloADC_HVS_Voltage(channel)
     starttime = time.time()
-    print("Taking charge block...")
-    block = session.DEggReadChargeBlockFixed(140,155,14*nevents,timeout=300)
+    
+    while(True):
+        try:
+            print(f"Taking charge block with the setting -- mask: {hex(flashermask)}, bias: {hex(intensity)}...")
+            block = session.DEggReadChargeBlockFixed(140,155,14*nevents,timeout=300)
+        except IOError:
+            print("Timeout! Ending the session and will restart.")
+            session.endStream()
+            session.setDEggExtTrigSourceICM()
+            session.startDEggExternalTrigStream(channel)
+            n_retry += 1
+            if n_retry == MAXNTRIAL:
+                print("Something wrong. Skip.")
+                session.close()
+                break
+            continue
+        break
+
     difftime = time.time() - starttime
     print(f'done. Duration: {difftime:.2f} sec')
     disableLEDflashing(session)
@@ -167,20 +193,19 @@ def storeChargeStampData(session, channel, filename, path, flashermask, intensit
         table.flush()
     
     fig = plt.figure()
-    plt.hist(charges, bins=1000, range=(-10,max(charges)), histtype='step')
+    plt.hist(charges, bins=1000, range=(-1,max(charges)), histtype='step')
     plt.xlabel('Charge [pC]')
     plt.ylabel('Entries')
     plt.legend(title=f'HV: {HVobs:.2f} V \n#Events: {len(charges)} \nLED mask: {hex(flashermask)}\nLED bias: {hex(int(intensity))}\nLED period: {freq}\nDuration: {difftime:.2f} sec')
     plt.tight_layout()
     plt.savefig(f'{path}/plots/charge{index}.pdf')
     plt.yscale('log')
+    plt.tight_layout()
     plt.savefig(f'{path}/plots/charge{index}_log.pdf')
     
     plt.clf()
     plt.close()
     
-    index += 1
-
     
 if __name__ == '__main__':
     parser = getParser()
