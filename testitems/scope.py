@@ -13,6 +13,7 @@ import sys
 import signal
 from addparser_iceboot import AddParser
 from loadFPGA import loadFPGA
+from testLED import doLEDflashing, disableLEDflashing, setLEDon
 
 
 def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, testRun=0):
@@ -84,10 +85,14 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
             session.setDEggConstReadout(channel, 4, int(nSamples))
         session.enableHV(channel)
         session.setDEggHV(channel,int(options.hvv))
-        time.sleep(1)
+        time.sleep(60)
         HVobs = session.readSloADC_HVS_Voltage(channel)
         print(f'Observed HV Supply Voltage for channel {channel}: {HVobs} V.')
 
+    if options.led: 
+        doLEDflashing(session,freq=options.freq,bias=options.intensity,flashermask=setLEDon(options.flashermask))
+        session.setDEggConstReadout(channel, 1, int(nSamples))
+    
     if feplsr > 0:
         session.setDAC(setchannel,30000)
         if int(nSamples) > 128:
@@ -250,6 +255,8 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
             print("\nReached end of run - exiting...")
             session.endStream()
             session.disableFEPulser(channel)
+            if options.led:
+                disableLEDflashing(session)
             #session.disableHV(channel)
             #session.setDEggHV(channel,0)
             session.close()
