@@ -141,6 +141,8 @@ def storeChargeStampData(session, channel, filename, path, flashermask, intensit
     HVobs = session.readSloADC_HVS_Voltage(channel)
     starttime = time.time()
     
+    n_retry = 0
+    MAXNTRIAL = 3
     while(True):
         try:
             print(f"Taking charge block with the setting -- mask: {hex(flashermask)}, bias: {hex(intensity)}...")
