@@ -9,9 +9,9 @@ import tables
 import time
 import datetime
 from addparser_iceboot import AddParser
-import matplotlib.pyplot as plt
 from mkplot import plotSetting
 from pulserCalib import getThreshold, getData
+
 
 def main(parser):
     (options, args) = parser.parse_args()
@@ -23,7 +23,7 @@ def main(parser):
 
     date = datetime.date.today()
     index = 1
-    prepath = f'results/SpeHist/{snum}/{date}/Run'
+    prepath = f'results/SpeHist/{snum}/ch{options.channel}/{date}/Run'
     path = prepath + str(index)
 
     while os.path.isdir(path):
@@ -32,8 +32,13 @@ def main(parser):
 
     print(f'=== File path is: {path}. ===')
     os.system(f'mkdir -p {path}')
+    f = open(f'{path}/log.txt','a')
+    f.write(f'Run date: {datetime.datetime.now()}')
+    f.write(f'{options}')
 
     thresSpeCurve(parser, path)
+    f.write(f'Run end: {datetime.datetime.now()}')
+    f.close()
 
 def thresSpeCurve(parser, path='.'):
     (options, args) = parser.parse_args()
@@ -63,32 +68,36 @@ def thresSpeCurve(parser, path='.'):
         dacSet = options.dacSettings[0]
         baselineset = int(dacSet[1]) 
 
-    if options.threshold is None:
-        baseline = getThreshold(parser, channel, baselineset, 0, path)
-        print(f'Observed baseline: {baseline}')
-        if options.bsthres is not None: 
-            if baseline - int(baseline) > 0.5: 
-                baseline = int(baseline) + 1
+    if options.external is False: 
+        if options.threshold is None:
+            baseline = getThreshold(parser, channel, baselineset, 0, path)
+            print(f'Observed baseline: {baseline}')
+            if options.bsthres is not None: 
+                if baseline - int(baseline) > 0.5: 
+                    baseline = int(baseline) + 1
+                else: 
+                    baseline = int(baseline)
+                threshold = int(baseline) + int(options.bsthres)
             else: 
-                baseline = int(baseline)
-            threshold = int(baseline) + int(options.bsthres)
-        else: 
-            threshold = int(baseline + 72.59/5)
-    else : 
-        threshold = int(options.threshold)
+                threshold = int(baseline + 72.59/5)
+        else : 
+            threshold = int(options.threshold)
 
     print(f'Set threshold: {threshold}')
     
     scope.main(parser,channel,path=path,threshold=threshold)
 
-    getSpeCurve(parser, channel, datapath, baseline)
+    getSpeCurve(options.filename, channel, datapath, baseline, options.b)
 
     return
 
-def getSpeCurve(parser, channel, path, baseline): 
-    (options, args) = parser.parse_args()
-    filename = options.filename
+def getSpeCurve(filename, channel, path, baseline, isB): 
+    import matplotlib
+    if not isB: 
+        matplotlib.use('Agg')
 
+    import matplotlib.pyplot as plt
+    
     plotSetting(plt)
 
     plt.ion()
@@ -136,8 +145,11 @@ def getIntCharges(filename, baseline):
 
     for i in range(len(waveforms)): 
         waveform = waveforms[i]
+        if baseline == 0:
+            baseline = np.mean(waveform[0:50])
         subtWf = waveform - baseline
-        charge = sum(subtWf[190:210])
+        #charge = sum(subtWf[190:210])
+        charge = sum(subtWf[150:170])
         charges.append(charge)
 
     avgwf = np.mean(waveforms, axis=0)
