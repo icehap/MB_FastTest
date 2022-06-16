@@ -58,3 +58,4 @@ def AddParser(parser):
     parser.add_option("--vscan",default=None)
     parser.add_option("--fscan",default=None)
     parser.add_option("--lscan",type=str,default='all')
+    parser.add_option("--nevtsdiv",type=int,default=10000000)

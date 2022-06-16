@@ -7,6 +7,7 @@ import datetime
 import tables
 from testLED import doLEDflashing, setLEDon, disableLEDflashing
 import numpy as np
+from tqdm import tqdm
 
 import matplotlib
 if os.getenv('BG') != None:
@@ -55,6 +56,8 @@ def takeChargeStamp(parser, path='.'):
     (options, args) = parser.parse_args()
 
     nevents = int(options.nevents)
+    nevtsDiv = int(options.nevtsdiv)
+    nevtsArray = []
 
     if options.filename is None: 
         print('Requires option: --filename.')
@@ -82,8 +85,10 @@ def takeChargeStamp(parser, path='.'):
     if int(options.hvv) > 0:
         session.enableHV(channel)
         session.setDEggHV(channel, int(options.hvv))
+        waittime = int(10+int(options.hvv)/50)
         print('Ramping HV...')
-        time.sleep(60)
+        for i in tqdm(range(waittime)):
+            time.sleep(1)
         HVobs = session.readSloADC_HVS_Voltage(channel)
         print(f'Observed HV Supply Voltages for channel {channel}: {HVobs} V.')
     
@@ -119,8 +124,14 @@ def takeChargeStamp(parser, path='.'):
         for j in biases:
             for k in freqs:
                 if options.led:
-                    doLEDflashing(session, freq=k, bias=j, flashermask=i)
-                storeChargeStampData(session, channel, options.filename, path, i, j, k, nevents, index)
+                    doLEDflashing(session, freq=k, bias=j, flashermask=setLEDon(i))
+                nevts = nevents
+                while nevts > nevtsDiv:
+                    storeChargeStampData(session, channel, options.filename, path, setLEDon(i), j, k, nevtsDiv, index)
+                    nevts -= nevtsDiv
+                if nevts > 0:
+                    storeChargeStampData(session, channel, options.filename, path, setLEDon(i), j, k, nevts, index)
+                disableLEDflashing(session)
                 index += 1
                 time.sleep(2)
 
@@ -162,7 +173,6 @@ def storeChargeStampData(session, channel, filename, path, flashermask, intensit
 
     difftime = time.time() - starttime
     print(f'done. Duration: {difftime:.2f} sec')
-    disableLEDflashing(session)
     
     times = np.array([(rec.timeStamp) for rec in block[channel] if not rec.flags])
     charges = np.array([(rec.charge *1e12) for rec in block[channel] if not rec.flags])
