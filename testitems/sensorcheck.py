@@ -103,6 +103,14 @@ def get_mb_power(session):
     power = I1V1 * V1V1 + I1V35 * V1V35 + I1V8 * V1V8 + I2V5 * V2V5 + I3V3 * V3V3
     return power/1.e3 #[W]
 
+def monitorcurrent(session, nevents, waittime=1):
+    from tqdm import tqdm
+    v = np.zeros((5,nevents))
+    for i in tqdm(range(nevents)):
+        for j in range(5):
+            v[j][i] = readSloAdcChannel(session, j)
+        time.sleep(waittime)
+    return v
 
 if __name__ == "__main__":
     parser = getParser()
