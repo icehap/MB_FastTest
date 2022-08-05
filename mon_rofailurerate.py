@@ -14,6 +14,7 @@ from utils import pathSetting, flashFPGA
 from wfreadout import beginWaveformStream
 
 def main(parser):
+    parser.add_option("--nowfs",action="store_true",default=False)
     (options, args) = parser.parse_args()
     path = pathSetting(options,'ROFailRate',True)
 
@@ -29,7 +30,8 @@ def main(parser):
         session.endStream()
         print('Done')
         session.disableHV(int(options.channel))
-        np.save(f'{path}/readouts.npy',np.array(readouts))
+        if not options.nowfs:
+            np.save(f'{path}/readouts.npy',np.array(readouts))
         np.save(f'{path}/intervals.npy',np.array(intervals))
         sys.exit(0)
     signal.signal(signal.SIGINT,signal_handler)
@@ -45,7 +47,7 @@ def main(parser):
             else:
                 readout = [parseTestWaveform(session.readWFMFromStream())]
         except IOError:
-            print('Timeout! Ending waveform stream and re-flasing the FPGA.')
+            print('\nTimeout! Ending waveform stream and re-flasing the FPGA.')
             session.endStream()
             intervals.append(interval)
             interval = 0
@@ -55,17 +57,19 @@ def main(parser):
             mode = beginWaveformStream(session,options)
             continue
 
-        wfs = []
-        for data in readout:
-            if data is None:
-                continue
-            wf = data['waveform']
-            wfs.append(wfs)
+        if not options.nowfs:
+            wfs = []
+            for data in readout:
+                if data is None:
+                    continue
+                wf = data['waveform']
+                wfs.append(wfs)
 
-        readouts.append(wfs)
+            readouts.append(wfs)
         interval += 1
 
-    np.save(f'{path}/readouts.npy',np.array(readouts))
+    if not options.nowfs:
+        np.save(f'{path}/readouts.npy',np.array(readouts))
     np.save(f'{path}/intervals.npy',np.array(intervals))
 
     return
