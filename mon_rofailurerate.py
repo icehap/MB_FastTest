@@ -25,11 +25,14 @@ def main(parser):
 
     readouts = []
     intervals = []
+    interval = 0
     def signal_handler(*args):
         print('\nEnding waveform stream...')
         session.endStream()
         print('Done')
         session.disableHV(int(options.channel))
+        with open(f'{path}/events.txt','a') as f:
+            f.write(f'{interval}\n')
         if not options.nowfs:
             np.save(f'{path}/readouts.npy',np.array(readouts))
         np.save(f'{path}/intervals.npy',np.array(intervals))
@@ -37,7 +40,6 @@ def main(parser):
     signal.signal(signal.SIGINT,signal_handler)
     
     mode = beginWaveformStream(session,options)
-    interval = 0
     while(True):
         print('\rEvent: %d' % interval,end='')
         readout = []
@@ -50,6 +52,8 @@ def main(parser):
             print('\nTimeout! Ending waveform stream and re-flasing the FPGA.')
             session.endStream()
             intervals.append(interval)
+            with open(f'{path}/events.txt','a') as f:
+                f.write(f'{interval}\n')
             interval = 0
             loadfw = flashFPGA(session)
             if loadfw == 1:
