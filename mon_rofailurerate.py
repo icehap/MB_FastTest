@@ -15,6 +15,7 @@ from wfreadout import beginWaveformStream
 
 def main(parser):
     parser.add_option("--nowfs",action="store_true",default=False)
+    parser.add_option("--grad",action="store_true",default=False)
     (options, args) = parser.parse_args()
     path = pathSetting(options,'ROFailRate',True)
 
@@ -26,6 +27,8 @@ def main(parser):
     readouts = []
     intervals = []
     interval = 0
+    threshold = int(options.threshold)
+    currentbaseline = 0
     def signal_handler(*args):
         print('\nEnding waveform stream...')
         session.endStream()
@@ -33,6 +36,11 @@ def main(parser):
         session.disableHV(int(options.channel))
         with open(f'{path}/events.txt','a') as f:
             f.write(f'{interval}\n')
+        with open(f'{path}/baseline.txt','a') as f:
+            f.write(f'{currentbaseline}\n')
+        if options.grad:
+            with open(f'{path}/setthres.txt','a') as f:
+                f.write(f'{threshold}\n')
         if not options.nowfs:
             np.save(f'{path}/readouts.npy',np.array(readouts))
         np.save(f'{path}/intervals.npy',np.array(intervals))
@@ -40,6 +48,7 @@ def main(parser):
     signal.signal(signal.SIGINT,signal_handler)
     
     mode = beginWaveformStream(session,options)
+    print(f'Threshold setting: {threshold}')
     while(True):
         print('\rEvent: %d' % interval,end='')
         readout = []
@@ -50,26 +59,33 @@ def main(parser):
                 readout = [parseTestWaveform(session.readWFMFromStream())]
         except IOError:
             print('\nTimeout! Ending waveform stream and re-flasing the FPGA.')
+            print(f'The baseline was {currentbaseline}')
             session.endStream()
             intervals.append(interval)
             with open(f'{path}/events.txt','a') as f:
                 f.write(f'{interval}\n')
+            with open(f'{path}/baseline.txt','a') as f:
+                f.write(f'{currentbaseline}\n')
             interval = 0
             loadfw = flashFPGA(session)
             if loadfw == 1:
                 break
-            mode = beginWaveformStream(session,options)
+            if options.grad:
+                with open(f'{path}/setthres.txt','a') as f:
+                    f.write(f'{threshold}\n')
+                threshold += 1
+            mode = beginWaveformStream(session,options,threshold)
+            print(f'Threshold setting: {threshold}')
             continue
 
-        if not options.nowfs:
-            wfs = []
-            for data in readout:
-                if data is None:
-                    continue
-                wf = data['waveform']
-                wfs.append(wfs)
+        for data in readout:
+            if data is None:
+                continue
+            wf = data['waveform']
+        currentbaseline = np.mean(wf)
 
-            readouts.append(wfs)
+        if not options.nowfs:
+            readouts.append(wf)
         interval += 1
 
     if not options.nowfs:

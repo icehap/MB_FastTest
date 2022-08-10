@@ -3,12 +3,13 @@ def beginWaveformStream(session,options,threshold=-1):
         if options.external:
             session.startDEggExternalHBufTrigStream(int(options.channel))
             return 'external-hbuf'
-        elif options.threshold is not None:
-            session.setDEggADCTriggerThreshold(int(options.channel),int(options.threshold))
+        elif threshold > 0:
+            print(f'threshold is set to {threshold}!')
+            session.setDEggADCTriggerThreshold(int(options.channel),threshold)
             session.startDEggADCHBufTrigStream(int(options.channel))
             return 'threshold-hbuf'
-        elif threshold > 0:
-            session.setDEggADCTriggerThreshold(int(options.channel),threshold)
+        elif options.threshold is not None:
+            session.setDEggADCTriggerThreshold(int(options.channel),int(options.threshold))
             session.startDEggADCHBufTrigStream(int(options.channel))
             return 'threshold-hbuf'
         else:
@@ -19,6 +20,7 @@ def beginWaveformStream(session,options,threshold=-1):
             session.startDEggExternalTrigStream(int(options.channel))
             return 'external'
         elif threshold > 0:
+            print(f'threshold is set to {threshold}!')
             session.startDEggThreshTrigStream(int(options.channel),threshold)
             return 'threshold'
         elif options.threshold is None:

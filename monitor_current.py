@@ -14,12 +14,7 @@ from utils import pathSetting
 def main(parser): 
     (options, args) = parser.parse_args()
 
-    snum = options.mbsnum 
     nevents = int(options.nevents)
-    if len(snum.split('/')) > 1:
-        print('Do not use "/" in the MB serial number. Exit.')
-        sys.exit(0)
-
     path = pathSetting(options,'IMON',True)
 
     loadFPGA(parser)
