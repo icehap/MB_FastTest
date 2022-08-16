@@ -1,5 +1,6 @@
 from iceboot.iceboot_session import startIcebootSession
 import time
+import sensorcheck as sc
 
 def loadFPGA(parser):
     time.sleep(0.5)
@@ -16,6 +17,7 @@ def loadFPGA(parser):
     else : 
         print(f'Configuration of the FPGA firmware {firmwarefilename} was successfully completed. ')
 
+    print (f'power: {sc.get_mb_power(session)} [W]')
     session.close()
     time.sleep(1.0)
 

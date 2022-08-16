@@ -45,11 +45,11 @@ def main(parser):
     outputs = []
     outbool = []
 
-    session.setDEggHV(0, int(options.hvv))
-    session.setDEggHV(1, int(options.hvv))
-
     session.enableHV(0)
     session.enableHV(1)
+
+    session.setDEggHV(0, int(options.hvv))
+    session.setDEggHV(1, int(options.hvv))
 
     time.sleep(5)
 
@@ -59,6 +59,8 @@ def main(parser):
             try: 
                 output = session.readPressure()
             except IOError: 
+                output = -1
+            except ValueError:
                 output = -1
         else:
             output = readSloAdcChannel(session, ch)
@@ -85,6 +87,30 @@ def readSloAdcChannel(session, channel):
 
     return float(outlist[3])
 
+def get_mb_power(session):
+    time.sleep(1)
+    I1V1  = readSloAdcChannel(session, 0) 
+    I1V35 = readSloAdcChannel(session, 1)
+    I1V8  = readSloAdcChannel(session, 2)
+    I2V5  = readSloAdcChannel(session, 3)
+    I3V3  = readSloAdcChannel(session, 4)
+    V1V8  = readSloAdcChannel(session, 5) 
+    V1V1  = readSloAdcChannel(session, 12)
+    V1V35 = readSloAdcChannel(session, 13)
+    V2V5  = readSloAdcChannel(session, 14)
+    V3V3  = readSloAdcChannel(session, 15)
+
+    power = I1V1 * V1V1 + I1V35 * V1V35 + I1V8 * V1V8 + I2V5 * V2V5 + I3V3 * V3V3
+    return power/1.e3 #[W]
+
+def monitorcurrent(session, nevents, waittime=1):
+    from tqdm import tqdm
+    v = np.zeros((5,nevents))
+    for i in tqdm(range(nevents)):
+        for j in range(5):
+            v[j][i] = readSloAdcChannel(session, j)
+        time.sleep(waittime)
+    return v
 
 if __name__ == "__main__":
     parser = getParser()

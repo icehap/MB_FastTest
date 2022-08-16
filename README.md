@@ -1,17 +1,20 @@
 # MB_FastTest
-Codes for the IceCube-Upgrade D-Egg Rev 4 mainboard Fast-Testing.
+Codes for the IceCube-Upgrade D-Egg mainboard Fast-Testing. (supports Rev 3<)
 
-The main script: mbfasttest.py includes all testing items. If run the code, the script takes the data from the mainboard, automatically analyzes the data, and then generates a report. 
+- The main script: mbfasttest.py includes all testing items. If runing the code, the script takes the data from the mainboard, automatically analyzes the data, and then generates a PDF-format report. 
 Available to use the same options as the iceboot. 
+- Waveform taking: thresSpeCurve.py 
+- Charge stamp taking: Qhist_chargestamp.py
 
-The package STM32Tools in the WIPACrepo is required. It is not automatically downloaded with the "git clone". 
+The package WIPACrepo/STM32Tools is required (need access permission). It is not automatically downloaded with the "git clone". Do it manally and put it in the correct path shown below. 
 
 ### Add the module path to PYTHONPATH: 
 ```
 $ export PYTHONPATH=$PYTHONPATH:[working dir]/MB_FastTest/testitems:[working dir]/tools/python
 ```
+This is automatically set by running setup.sh. 
 
-### Run the main script: 
+### Run the main fast-test script: 
 ```
 $ python3 mbfasttest.py --host=[host IP] --port=[port] --mbsnum=[S/N] --author=[author]
 ```

@@ -17,11 +17,13 @@ def main(parser,path='.'):
 
     session = startIcebootSession(parser)
     
+    session.enableHV(0)
+    session.enableHV(1)
     session.setDEggHV(0,0)
     session.setDEggHV(1,0)
     time.sleep(1)
     
-    HVsettings = np.arange(0,1500,20)
+    HVsettings = np.arange(0,700,20)
 
     datapath = f'{path}/raw'
 
@@ -88,18 +90,20 @@ def getLists(session, HVsettings, channel, hvbnums, datapath='.'):
     hvcerr = []
     
     print(f'Scan for channel {channel}.')
+    session.enableHV(channel)
+    time.sleep(1)
     for i in range(len(HVsettings)):
         session.setDEggHV(channel, HVsettings[i])
-        session.enableHV(channel)
-        time.sleep(0.5)
+        time.sleep(1)
         
         hvvols = []
         hvcurs = []
-        for j in range(5):
+        for j in range(10):
             hvv = readSloAdcChannel(session,8+2*channel)
             time.sleep(0.01)
             hvc = readSloAdcChannel(session,9+2*channel)
             time.sleep(0.01)
+            print(f'  *** {j}: {hvv:.3f} V')
             hvvols.append(hvv)
             hvcurs.append(hvc)
 

@@ -58,3 +58,10 @@ def AddParser(parser):
     parser.add_option("--vscan",default=None)
     parser.add_option("--fscan",default=None)
     parser.add_option("--lscan",type=str,default='all')
+    parser.add_option("--nevtsdiv",type=int,default=10000000)
+
+    # others
+    parser.add_option("--hbuf",dest="hbuf",action="store_true",
+                      help="Use FPGA hit buffer", default=False)
+    parser.add_option("--block",dest="block",action="store_true",
+                      help="Use block readout of waveforms", default=False)

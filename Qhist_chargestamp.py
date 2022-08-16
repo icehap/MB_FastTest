@@ -82,12 +82,12 @@ def main():
     ofile = TFile(f'{hdfout_pre}.root',"RECREATE")
     h = [ROOTHistInit(0), ROOTHistInit(1)]
 
-    for channel in range(2): 
+    for channel in range(1): 
         session = startIcebootSession(parser)
-        session.flashConfigureFPGA("degg_fw_v0x10e.rbf.gz")
+        #session.flashConfigureFPGA("degg_fw_v0x10e.rbf.gz")
         session.enableHV(channel)
         session.setDEggHV(channel, hv[channel])
-        time.sleep(2)
+        time.sleep(60)
         HVobs = [session.readSloADC_HVS_Voltage(0), session.readSloADC_HVS_Voltage(1)]
         print(f'Observed HV Supply Voltages for channel {channel}: {HVobs[channel]} V.')
         

@@ -38,19 +38,9 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
         print(f'Re-start the session. Trial {trial}...')
         session = startIcebootSession(parser)
     
-    nevents = int(options.nevents)
-    if testRun > 0: 
-        nevents = testRun
-
-    channel = 0
-    if inchannel>-1: 
-        channel = inchannel
-    else:
-        channel = int(options.channel)
-
-    setchannel = 'A'
-    if channel == 1:
-        setchannel = 'B'
+    nevents = testRun if testRun > 0 else int(options.nevents)
+    channel = inchannel if inchannel>-1 else int(options.channel)
+    setchannel = 'B' if channel == 1 else 'A'
 
     if (len(options.dacSettings) == 0) and (dacvalue > -1): 
         session.setDAC(setchannel,dacvalue)

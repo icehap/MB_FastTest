@@ -21,21 +21,35 @@ def main(parser,path=".",comment=""):
     absaxels = []
     absmagns = []
 
-    session.enableCalibrationPower()
-    session.setCalibrationSlavePowerMask(1)
-    session.setCameraEnableMask(0xFF)
-    time.sleep(1)
-    session.setCalibrationSlavePowerMask(2)
-    session.enableCalibrationTrigger(1000)
-    session.setFlasherMask(0xFFFF)
-    session.setFlasherBias(0xFFFF)
+    for i in range(2):
+        session.enableCalibrationPower()
+        session.setCalibrationSlavePowerMask(1)
+        session.setCameraEnableMask(0xFF)
+        time.sleep(2)
+        session.disableCalibrationPower()
+        session.close()
+        loadFPGA(parser)
+        session = startIcebootSession(parser)
+        session.enableCalibrationPower()
+        session.setCalibrationSlavePowerMask(2)
+        session.enableCalibrationTrigger(1000)
+        session.setFlasherMask(0xFFFF)
+        session.setFlasherBias(0xFFFF)
+        session.disableCalibrationPower()
+        session.close()
+        loadFPGA(parser)
+        session = startIcebootSession(parser)
+        time.sleep(2)
     
     for i in range(int(options.iter)): 
         axeldata = session.readAccelerometerXYZ()
         absaxel = np.sqrt(np.sum(np.square(axeldata)))
         magndata = session.readMagnetometerXYZ()
         absmagn = np.sqrt(np.sum(np.square(magndata)))
-        pressure = session.readPressure()
+        try: 
+            pressure = session.readPressure()
+        except ValueError:
+            pressure = -1
         temperature = readSloAdcChannel(session,7)
         axels.append(axeldata)
         magns.append(magndata)

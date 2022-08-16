@@ -79,6 +79,8 @@ def doScaler(parser, path='.'):
         threshold = int(options.threshold)
 
     print(f'Set threshold: {threshold}')
+    with open(f'{datapath}/memo','w') as f: 
+        f.write(f'Set threshold: {threshold}')
 
     durationUS = 100000
     counts = []
@@ -92,8 +94,14 @@ def doScaler(parser, path='.'):
     session.enableScalers(channel,durationUS,24)
     time.sleep(5)
     for i in tqdm(range(int(options.nevents))):
-        scaler_count = session.getScalerCount(channel)
-        if scaler_count > 100: 
+        try: 
+            scaler_count = session.getScalerCount(channel)
+        except: 
+            tqdm.write(f'{i}: getScalerCount failed.')
+            counts.append(-1)
+            time.sleep(2)
+            continue
+        if int(scaler_count) > 30: 
             tqdm.write(f'Iteration {i}: {scaler_count/durationUS*1e6} Hz')
         counts.append(int(scaler_count))
         time.sleep(durationUS/1e6)

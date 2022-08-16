@@ -84,14 +84,8 @@ def main(parser):
     
     session.setDEggConstReadout(int(options.channel), 1, int(nSamples))
 
-    if options.external:
-        session.startDEggExternalTrigStream(int(options.channel))
-    elif options.threshold is None:
-        session.startDEggSWTrigStream(int(options.channel), 
-            int(options.swTrigDelay))
-    else:
-        session.startDEggThreshTrigStream(int(options.channel),
-            int(options.threshold))
+    session.setDEggExtTrigSourceICM()
+    session.startDEggExternalTrigStream(int(options.channel))
 
     # define signal handler to end the stream on CTRL-C
     def signal_handler(*args):
