@@ -87,6 +87,15 @@ def readSloAdcChannel(session, channel):
 
     return float(outlist[3])
 
+def getHVV(session,channel):
+    return readSloAdcChannel(session,int(8+2*channel))
+
+def getHVI(session,channel):
+    return readSloAdcChannel(session,int(9+2*channel))
+
+def getTemp(session):
+    return readSloAdcChannel(session,7)
+
 def get_mb_power(session):
     time.sleep(1)
     I1V1  = readSloAdcChannel(session, 0) 
