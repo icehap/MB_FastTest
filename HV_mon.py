@@ -34,16 +34,39 @@ def main(parser):
     temp = []
     HVstart = 700
     HVend   = 1500
+    waittime = 200
     HVstartDelay = int(HVstart/50)
     stages = np.linspace(HVstart,HVend,20)
-    for stage in tqdm(stages):
-        session.setDEggHV(channel,int(stage))
-        for iteration in tqdm(np.arange(HVstartDelay*10+50 if stage==HVstart else 50),leave=False):
+
+    pbar = tqdm(total = len(stages))
+    i = 0
+    while i < len(stages):
+        stage = stages[i]
+        try: 
+            session.setDEggHV(channel,int(stage))
+        except:
+            i = 0
+            hvv = []
+            hvi = []
+            setv = []
+            temp = []
+            pbar.reset()
+            session.close()
+            time.sleep(1)
+            session = startIcebootSession(parser)
+            time.sleep(1)
+            session.enableHV(channel)
+            continue
+
+        for iteration in tqdm(np.arange(HVstartDelay*10+waittime if stage==HVstart else waittime),leave=False):
             hvv.append(getHVV(session,channel))
             hvi.append(getHVI(session,channel))
             setv.append(stage)
             temp.append(getTemp(session))
             time.sleep(0.1)
+        i += 1
+        pbar.update(1)
+    pbar.close()
 
     store_hdf(f'{path}/data.hdf',hvv,hvi,temp)
     session.setDEggHV(channel,0)
@@ -53,7 +76,7 @@ def main(parser):
     ax1 = fig.add_subplot(111)
     ax2 = ax1.twinx()
     for i in range(len(stages)):
-        ax1.axvline(HVstartDelay*10+10+50*i,ls=':',color='magenta',alpha=0.7)
+        ax1.axvline(HVstartDelay*10+10+waittime*i,ls=':',color='magenta',alpha=0.7)
     ax1.plot(np.arange(len(hvv)), hvv, label='Voltage',color='tab:blue')
     ax2.plot(np.arange(len(hvv)), hvi, label='Current',color='tab:orange')
     ax1.set_xlabel('Readout number')

@@ -85,7 +85,11 @@ def readSloAdcChannel(session, channel):
     out = session.cmd("%d sloAdcReadChannel" % (channel)) 
     outlist = out.split()
 
-    return float(outlist[3])
+    try: 
+        value = float(outlist[3])
+    except:
+        value = -1
+    return float(value)
 
 def getHVV(session,channel):
     return readSloAdcChannel(session,int(8+2*channel))
