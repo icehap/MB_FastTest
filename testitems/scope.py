@@ -61,8 +61,9 @@ def main(parser, inchannel=-1, dacvalue=-1, path='.', feplsr=0, threshold=0, tes
 
     session.setDEggConstReadout(channel, 2, int(nSamples))
 
-    plt.ion()
-    plt.show()
+    if options.b:
+        plt.ion()
+        plt.show()
     fig = plt.figure()
     ax = fig.add_subplot(111)
     plt.xlabel("Waveform Bin",ha='right',x=1.0)
