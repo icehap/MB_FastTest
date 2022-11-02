@@ -33,8 +33,9 @@ def main(parser):
 
     loadFPGA(parser)
 
+    threshold_above_baseline = 10 if (options.bsthres is None) else int(options.bsthres)
     os.system(f'mkdir -p {path}/raw')
-    threshold = getThreshold(parser, channel, 30000, 10, path)
+    threshold = getThreshold(parser, channel, 30000, threshold_above_baseline, path)
     print(f'threshold is {threshold}')
 
     session = startIcebootSession(parser)
