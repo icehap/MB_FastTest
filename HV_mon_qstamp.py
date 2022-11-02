@@ -90,7 +90,7 @@ def main(parser):
         this_hvi = []
         for iteration in tqdm(np.arange(readout_length),leave=False):
             try:
-                datadict = charge_readout(session, channel, stage, nevents, hdfout)
+                datadict = charge_readout(session, channel, stage, nevents, hdfout, options.onlyhv)
             except Exception:
                 isException = 1
                 i = 0 
@@ -169,12 +169,14 @@ def main(parser):
     else:
         plt.draw()
 
-def charge_readout(session, channel, stage, nevents, filename):
+def charge_readout(session, channel, stage, nevents, filename, onlyhv=False):
     datadict = dict_init()
     datadict['hvv'] = getHVV(session,channel)
     datadict['hvi'] = getHVI(session,channel)
     datadict['setv'] = stage
     datadict['temp'] = getTemp(session)
+
+    chargesize = 14 if onlyhv else 14*nevents
     try: 
         block = session.DEggReadChargeBlock(10,15,14*nevents,timeout=10)
     except IOError:
@@ -248,6 +250,7 @@ if __name__ == "__main__":
     parser.add_option("--wtime",type=int,default=100)
     parser.add_option("--wtimelong",type=int,default=2500)
     parser.add_option("-g",action="store_true",default=False)
+    parser.add_option("--onlyhv",action="store_true",default=False)
     (options, args) = parser.parse_args()
 
     main(parser)
