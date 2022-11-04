@@ -14,6 +14,7 @@ from utils import pathSetting
 import tables
 from tqdm import tqdm
 from pulserCalib import getThreshold
+import datetime
 
 
 def main(parser): 
@@ -33,10 +34,11 @@ def main(parser):
 
     loadFPGA(parser)
 
-    threshold_above_baseline = 10 if (options.bsthres is None) else int(options.bsthres)
-    os.system(f'mkdir -p {path}/raw')
-    threshold = getThreshold(parser, channel, 30000, threshold_above_baseline, path)
-    print(f'threshold is {threshold}')
+    if not options.nocharge:
+        threshold_above_baseline = 10 if (options.bsthres is None) else int(options.bsthres)
+        os.system(f'mkdir -p {path}/raw')
+        threshold = getThreshold(parser, channel, 30000, threshold_above_baseline, path)
+        print(f'threshold is {threshold}')
 
     session = startIcebootSession(parser)
     time.sleep(1)
@@ -45,7 +47,8 @@ def main(parser):
     #nSamples = (int(options.samples) / 4) * 4
     #session.setDEggConstReadout(channel, 2, int(nSamples))
     #session.startDEggSWTrigStream(channel, int(options.swTrigDelay))
-    session.startDEggThreshTrigStream(channel, threshold) 
+    if not options.nocharge:
+        session.startDEggThreshTrigStream(channel, threshold) 
 
     datadict = dict_init()
     HVstart = int(options.vmin)
@@ -92,6 +95,7 @@ def main(parser):
             try:
                 datadict = charge_readout(session, channel, stage, nevents, hdfout, options.onlyhv, options.nocharge)
             except Exception:
+                tqdm.write('Exception')
                 isException = 1
                 i = 0 
                 pbar.reset()
@@ -103,11 +107,12 @@ def main(parser):
         if isException:
             continue
         # long term monitoring
-        if (i!=0) and (np.std(this_hvi)>1):
+        if (i!=0) and (np.std(this_hvi)>.5):
             for iteration in tqdm(np.arange(waittimelong),leave=False):
                 try:
-                    datadict = charge_readout(session, channel, stage, nevents, hdfout)
+                    datadict = charge_readout(session, channel, stage, nevents, hdfout, options.onlyhv, options.nocharge)
                 except Exception:
+                    tqdm.write('Exception')
                     isException = 1
                     i = 0
                     pbar.reset()
@@ -178,7 +183,8 @@ def charge_readout(session, channel, stage, nevents, filename, onlyhv=False, noc
 
     if nocharge:
         datadict['charge'] = [0]
-        datadict['timestamp'] = [datetime.datetime.now().timestamp()-datetime.datetime(2022,1,1)]
+        origin_time = datetime.datetime(2022,11,1)
+        datadict['timestamp'] = [time.time()-origin_time.timestamp()]
         store_hdf_array(filename,datadict)
         return datadict
 
