@@ -22,6 +22,9 @@ def pathSetting(options, measname, mon=False):
         path = prepath + str(index)
     print(f'=== File path is: {path} ===')
     os.system(f'mkdir -p {path}')
+    with open(f'{path}/log.txt','a') as f:
+        f.write(f'Run date: {datetime.datetime.now()}')
+        f.write(f'{options}')
 
     return path
 
