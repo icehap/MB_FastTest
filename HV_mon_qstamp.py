@@ -90,7 +90,7 @@ def main(parser):
         this_hvi = []
         for iteration in tqdm(np.arange(readout_length),leave=False):
             try:
-                datadict = charge_readout(session, channel, stage, nevents, hdfout, options.onlyhv)
+                datadict = charge_readout(session, channel, stage, nevents, hdfout, options.onlyhv, options.nocharge)
             except Exception:
                 isException = 1
                 i = 0 
@@ -169,16 +169,20 @@ def main(parser):
     else:
         plt.draw()
 
-def charge_readout(session, channel, stage, nevents, filename, onlyhv=False):
+def charge_readout(session, channel, stage, nevents, filename, onlyhv=False, nocharge=False):
     datadict = dict_init()
     datadict['hvv'] = getHVV(session,channel)
     datadict['hvi'] = getHVI(session,channel)
     datadict['setv'] = stage
     datadict['temp'] = getTemp(session)
 
+    if nocharge:
+        datadict['charge'] = [0]
+        datadict['timestamp'] = [datetime.datetime.now().timestamp()-datetime.datetime(2022,1,1)]
+
     chargesize = 14 if onlyhv else 14*nevents
     try: 
-        block = session.DEggReadChargeBlock(10,15,14*nevents,timeout=10)
+        block = session.DEggReadChargeBlock(10,15,chargesize,timeout=10)
     except IOError:
         session.endStream()
         session.close()
@@ -251,6 +255,7 @@ if __name__ == "__main__":
     parser.add_option("--wtimelong",type=int,default=2500)
     parser.add_option("-g",action="store_true",default=False)
     parser.add_option("--onlyhv",action="store_true",default=False)
+    parser.add_option("--nocharge",action="store_true",default=False)
     (options, args) = parser.parse_args()
 
     main(parser)
