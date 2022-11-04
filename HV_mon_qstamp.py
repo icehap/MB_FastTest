@@ -179,6 +179,8 @@ def charge_readout(session, channel, stage, nevents, filename, onlyhv=False, noc
     if nocharge:
         datadict['charge'] = [0]
         datadict['timestamp'] = [datetime.datetime.now().timestamp()-datetime.datetime(2022,1,1)]
+        store_hdf_array(filename,datadict)
+        return datadict
 
     chargesize = 14 if onlyhv else 14*nevents
     try: 
