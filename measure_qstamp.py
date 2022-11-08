@@ -75,7 +75,6 @@ def chargestamp_multiple(parser):
             session.enableHV(channel)
             continue
         simple_plot_qhist(pdf, datadic)
-        print(np.mean(datadic['charge']))
         prev_setv = setv
         i += 1
 
@@ -99,6 +98,7 @@ def charge_readout(session, options, setHV, filename):
         block = session.DEggReadChargeBlock(10,15,14*options.nevents,timeout=options.timeout)
     datadic['charge'] = [(rec.charge*1e12) for rec in block[options.channel] if not rec.flags]
     datadic['timestamp'] = [rec.timeStamp for rec in block[options.channel] if not rec.flags]
+    print(np.mean(datadic['charge']))
     store_hdf(filename, datadic)
     return datadic
 
