@@ -51,3 +51,14 @@ def flashFPGA(session,prefer=None):
         print('Successfully configured the FPGA firmware.')
         time.sleep(1)
         return 0
+
+def plot_setting(parser):
+    (options, args) = parser.parse_args()
+    if options.g:
+        print('engine agg')
+        import matplotlib as mpl
+        mpl.use('Agg')
+    elif not options.b:
+        print('engine pdf')
+        import matplotlib as mpl
+        mpl.use('PDF')
