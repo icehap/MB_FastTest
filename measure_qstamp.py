@@ -43,7 +43,6 @@ def chargestamp_multiple(parser):
         session = startIcebootSession(parser)
         session.setDEggExtTrigSourceICM()
         session.startDEggExternalTrigStream(channel)
-        doLEDflashing(session, freq=options.freq, bias=options.intensity,flashermask=setLEDon(1))
     else:
         os.makedirs(f'{path}/raw',exist_ok=True)
         threshold = getThreshold(parser, channel, 30000, 9, path)
@@ -53,6 +52,8 @@ def chargestamp_multiple(parser):
     time.sleep(1)
     session.enableHV(channel)
 
+    led_on(session, options.freq, options.intensity, setLEDon(1), options.led)
+
     pdf = PdfPages(f'{path}/charge_histograms.pdf')
 
     i = 0
@@ -60,10 +61,12 @@ def chargestamp_multiple(parser):
     while i < len(set_voltages):
         time.sleep(1)
         setv = set_voltages[i]
+        led_off(session, options.led)
         print(f'Set voltage: {setv} V')
         session.setDEggHV(channel,int(setv))
         for j in tqdm(range(int(abs(setv-prev_setv)/50+1))):
             time.sleep(1)
+        led_on(session, options.freq, options.intensity, setLEDon(1), options.led)
         try:
             datadic = charge_readout(session, options, int(setv), hdfout)
         except:
@@ -78,12 +81,19 @@ def chargestamp_multiple(parser):
         prev_setv = setv
         i += 1
 
-    if options.led:
-        disableLEDflashing(session)
+    led_off(session, options.led)
     session.disableHV(channel)
     session.close()
     pdf.close()
     return 
+
+def led_on(session, freq, bias, ledsel, ledon):
+    if ledon:
+        doLEDflashing(session, freq, bias, ledsel)
+
+def led_off(session, ledon):
+    if ledon:
+        disableLEDflashing(session)
 
 def charge_readout(session, options, setHV, filename):
     datadic = dict_init()
