@@ -12,6 +12,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import utils
 import shared_options
 import traceback
+from pulserCalib import getThreshold
 
 def main():
     start_time = time.time()
@@ -27,24 +28,30 @@ def main():
     if options.hvv is not None:
         chargestamp_multiple(parser)
     end_time = time.time()
-    print(f'Duration: {end_time - start_time} sec')
+    print(f'Duration: {end_time - start_time:.1f} sec')
 
 def chargestamp_multiple(parser):
-    session = startIcebootSession(parser)
     (options, args) = parser.parse_args()
     channel = int(options.channel)
 
     path = utils.pathSetting(options,'QSTAMP2')
     hdfout = f'{path}/data.hdf'
 
-    time.sleep(1)
-    session.enableHV(channel)
     set_voltages = [int(i) for i in str(options.hvv).split(',')]
 
-    session.setDEggExtTrigSourceICM()
-    session.startDEggExternalTrigStream(channel)
+    if options.led:
+        session = startIcebootSession(parser)
+        session.setDEggExtTrigSourceICM()
+        session.startDEggExternalTrigStream(channel)
+        doLEDflashing(session, freq=options.freq, bias=options.intensity,flashermask=setLEDon(1))
+    else:
+        os.makedirs(f'{path}/raw',exist_ok=True)
+        threshold = getThreshold(parser, channel, 30000, 9, path)
+        session = startIcebootSession(parser)
+        session.startDEggThreshTrigStream(channel,)
 
-    doLEDflashing(session, freq=options.freq, bias=options.intensity,flashermask=setLEDon(1))
+    time.sleep(1)
+    session.enableHV(channel)
 
     pdf = PdfPages(f'{path}/charge_histograms.pdf')
 
@@ -72,7 +79,8 @@ def chargestamp_multiple(parser):
         prev_setv = setv
         i += 1
 
-    disableLEDflashing(session)
+    if options.led:
+        disableLEDflashing(session)
     session.disableHV(channel)
     session.close()
     pdf.close()
@@ -84,8 +92,11 @@ def charge_readout(session, options, setHV, filename):
     datadic['hvi'] = session.readSloADC_HVS_Current(options.channel)
     datadic['setv'] = setHV
     datadic['temp'] = session.readSloADCTemperature()
-    
-    block = session.DEggReadChargeBlock(10,15,14*options.nevents,timeout=options.timeout)
+
+    if options.led:
+        block = session.DEggReadChargeBlockFixed(140,155,14*options.nevents,timeout=options.timeout)
+    else: 
+        block = session.DEggReadChargeBlock(10,15,14*options.nevents,timeout=options.timeout)
     datadic['charge'] = [(rec.charge*1e12) for rec in block[options.channel] if not rec.flags]
     datadic['timestamp'] = [rec.timeStamp for rec in block[options.channel] if not rec.flags]
     store_hdf(filename, datadic)

@@ -19,4 +19,5 @@ def Waveform(parser):
     parser.add_option('--swTrigDelay',help='[ms] delay between software trigs',type='int',default=10)
     parser.add_option('--bsthres',help='Apply threshold trigger at a level above baseline',default=None)
     parser.add_option('--nevents',help='#wfs',type='int',default=10)
-    parser.add_option("--timeout",help='Timeout',type='int', default=10)
+    parser.add_option('--timeout',help='Timeout',type='int', default=10)
+    parser.add_option('--samples',help='#samples',type='int',default=256)
