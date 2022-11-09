@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import utils
 import shared_options
+import waveform
 import traceback
-from pulserCalib import getThreshold
 
 def main():
     start_time = time.time()
@@ -45,14 +45,12 @@ def chargestamp_multiple(parser):
         session.startDEggExternalTrigStream(channel)
     else:
         os.makedirs(f'{path}/raw',exist_ok=True)
-        threshold = getThreshold(parser, channel, 30000, 9, path)
         session = startIcebootSession(parser)
-        session.startDEggThreshTrigStream(channel,)
+        threshold = waveform.get_baseline(session, options, path) + 9
+        session.startDEggThreshTrigStream(channel,threshold)
 
     time.sleep(1)
     session.enableHV(channel)
-
-    led_on(session, options.freq, options.intensity, setLEDon(1), options.led)
 
     pdf = PdfPages(f'{path}/charge_histograms.pdf')
 
@@ -66,7 +64,7 @@ def chargestamp_multiple(parser):
         session.setDEggHV(channel,int(setv))
         for j in tqdm(range(int(abs(setv-prev_setv)/50+1))):
             time.sleep(1)
-        led_on(session, options.freq, options.intensity, setLEDon(1), options.led)
+        led_on(session, options.freq, options.intensity, setLEDon(1,False), options.led)
         try:
             datadic = charge_readout(session, options, int(setv), hdfout)
         except:
@@ -82,6 +80,7 @@ def chargestamp_multiple(parser):
         i += 1
 
     led_off(session, options.led)
+    session.endStream()
     session.disableHV(channel)
     session.close()
     pdf.close()
@@ -97,10 +96,11 @@ def led_off(session, ledon):
 
 def charge_readout(session, options, setHV, filename):
     datadic = dict_init()
-    datadic['hvv'] = session.readSloADC_HVS_Voltage(options.channel)
-    datadic['hvi'] = session.readSloADC_HVS_Current(options.channel)
+    niter = 100
+    datadic['hvv'] = [session.readSloADC_HVS_Voltage(options.channel) for i in range(niter)]
+    datadic['hvi'] = [session.readSloADC_HVS_Current(options.channel) for i in range(niter)]
     datadic['setv'] = setHV
-    datadic['temp'] = session.readSloADCTemperature()
+    datadic['temp'] = [session.readSloADCTemperature() for i in range(niter)]
 
     if options.led:
         block = session.DEggReadChargeBlockFixed(140,155,14*options.nevents,timeout=options.timeout)
@@ -113,15 +113,15 @@ def charge_readout(session, options, setHV, filename):
     return datadic
 
 def dict_init():
-    return {'hvv':0,'hvi':0,'setv':0,'temp':0,'charge':[0],'timestamp':[0]}
+    return {'hvv':[0],'hvi':[0],'setv':0,'temp':[0],'charge':[0],'timestamp':[0]}
 
 def store_hdf(filename, datadic):
     if not os.path.isfile(filename):
         class Event(tables.IsDescription):
-            hvv = tables.Float32Col()
-            hvi = tables.Float32Col()
+            hvv = tables.Float32Col(shape=np.asarray(datadic['hvv']).shape)
+            hvi = tables.Float32Col(shape=np.asarray(datadic['hvi']).shape)
             setv = tables.Int32Col()
-            temp = tables.Float32Col()
+            temp = tables.Float32Col(shape=np.asarray(datadic['temp']).shape)
             timestamp = tables.Int32Col(shape=np.asarray(datadic['timestamp']).shape)
             charge = tables.Float32Col(shape=np.asarray(datadic['charge']).shape)
         with tables.open_file(filename,'w') as f:
@@ -142,6 +142,9 @@ def simple_plot_qhist(pdf, datadic):
     plt.title(f'{datadic["setv"]}V')
     pdf.savefig()
     plt.clf()
+
+def simple_plot_hvs(setv_array, obsv_array, obsv_error, obsi_array, obsi_error):
+    plt.errorbar(setv_array,obsv_array)
 
 if __name__ == '__main__':
     main()

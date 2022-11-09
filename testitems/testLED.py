@@ -20,7 +20,7 @@ def doLEDflashing(session, freq=5000, bias=0x6000, flashermask=0xFFFF):
 
     time.sleep(1)
 
-def setLEDon(numbers):
+def setLEDon(numbers,doprint=True):
     rawnums = str(numbers).split(',')
     nums = np.array([])
     for i in rawnums:
@@ -30,7 +30,8 @@ def setLEDon(numbers):
         else: 
             can = int(i)
         nums = np.append(nums,can).astype(int)
-    print(f'Turn on the following LEDs: {nums}')
+    if doprint:
+        print(f'Turn on the following LEDs: {nums}')
     flashermask = 0
     led_configs = [0x0001,
                    0x0002,
