@@ -85,7 +85,20 @@ def readSloAdcChannel(session, channel):
     out = session.cmd("%d sloAdcReadChannel" % (channel)) 
     outlist = out.split()
 
-    return float(outlist[3])
+    try: 
+        value = float(outlist[3])
+    except:
+        value = -1
+    return float(value)
+
+def getHVV(session,channel):
+    return readSloAdcChannel(session,int(8+2*channel))
+
+def getHVI(session,channel):
+    return readSloAdcChannel(session,int(9+2*channel))
+
+def getTemp(session):
+    return readSloAdcChannel(session,7)
 
 def get_mb_power(session):
     time.sleep(1)

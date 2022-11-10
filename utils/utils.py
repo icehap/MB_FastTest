@@ -22,6 +22,9 @@ def pathSetting(options, measname, mon=False):
         path = prepath + str(index)
     print(f'=== File path is: {path} ===')
     os.system(f'mkdir -p {path}')
+    with open(f'{path}/log.txt','a') as f:
+        f.write(f'Run date: {datetime.datetime.now()}')
+        f.write(f'{options}')
 
     return path
 
@@ -48,3 +51,14 @@ def flashFPGA(session,prefer=None):
         print('Successfully configured the FPGA firmware.')
         time.sleep(1)
         return 0
+
+def plot_setting(parser):
+    (options, args) = parser.parse_args()
+    if options.g:
+        print('engine agg')
+        import matplotlib as mpl
+        mpl.use('Agg')
+    elif not options.b:
+        print('engine pdf')
+        import matplotlib as mpl
+        mpl.use('PDF')
