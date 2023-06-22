@@ -20,6 +20,7 @@ def main():
     shared_options.General(parser)
     shared_options.LED(parser)
     shared_options.Waveform(parser)
+    parser.add_option('--analysis',help='do analysis',action='store_true',default=False)
 
     utils.plot_setting(parser)
 
@@ -56,13 +57,14 @@ def chargestamp_multiple(parser):
 
     i = 0
     prev_setv = 0
-    while i < len(set_voltages):
+    for i in tqdm(range(len(set_voltages)),desc='Data taking progress'):
         time.sleep(1)
         setv = set_voltages[i]
         led_off(session, options.led)
-        print(f'Set voltage: {setv} V')
+        #print(f'Set voltage: {setv} V')
         session.setDEggHV(channel,int(setv))
-        for j in tqdm(range(int(abs(setv-prev_setv)/50+1))):
+        for j in (pbar := tqdm(range(int(abs(setv-prev_setv)/50+1)),leave=False)):
+            pbar.set_description(f"Waiting for setv {setv} V")
             time.sleep(1)
         led_on(session, options.freq, options.intensity, setLEDon(1,False), options.led)
         try:
@@ -84,6 +86,11 @@ def chargestamp_multiple(parser):
     session.disableHV(channel)
     session.close()
     pdf.close()
+
+    if options.analysis:
+        from analysis.qstamp_analyze import plot_scaled_charge_histogram_wrapper
+        ana = plot_scaled_charge_histogram_wrapper(filepath=path,thzero=0.32,startv=1300,steps=250)
+
     return 
 
 def led_on(session, freq, bias, ledsel, ledon):
@@ -108,7 +115,7 @@ def charge_readout(session, options, setHV, filename):
         block = session.DEggReadChargeBlock(10,15,14*options.nevents,timeout=options.timeout)
     datadic['charge'] = [(rec.charge*1e12) for rec in block[options.channel] if not rec.flags]
     datadic['timestamp'] = [rec.timeStamp for rec in block[options.channel] if not rec.flags]
-    print(np.mean(datadic['charge']))
+    #print(np.mean(datadic['charge']))
     store_hdf(filename, datadic)
     return datadic
 

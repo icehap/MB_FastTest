@@ -42,6 +42,9 @@ def plot_charge_histogram(filepath):
 @click.option('--startv',type=int,default=1300)
 @click.option('--steps',type=int,default=250)
 def plot_scaled_charge_histogram(filepath,thzero,startv,steps):
+    plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps)
+
+def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps):
     with open(f'{filepath}/fit_config.txt','w') as f:
         f.write(f'th0: {thzero} \nstartv: {startv} \nsteps: {steps}')
 
@@ -74,10 +77,25 @@ def plot_scaled_charge_histogram(filepath,thzero,startv,steps):
 
             pois_mean.append(-np.log(np.sum(n_ped_hist)/len(charge)))
             pois_err.append(1/np.sqrt(np.sum(n_ped_hist)))
-            print(np.sum(n_ped_hist), len(charge))
+            #print(np.sum(n_ped_hist), len(charge))
             
             # spe fitting
-            popt, pcov = curve_fit(gaus, bin_center_[bin_center_>threshold], hist_[bin_center_>threshold])
+            #try:
+            #    popt, pcov = curve_fit(gaus, bin_center_[bin_center_>threshold], hist_[bin_center_>threshold])
+            #except RuntimeError:
+            #    subt_ped_ = hist_ - gaus(bin_center_,popt0[0],popt0[1],popt0[2]) 
+            #    popt, pcov = curve_fit(gaus, bin_center_[bin_center_>threshold], subt_ped_[bin_center_>threshold])
+            
+            subt_ped_ = hist_ - gaus(bin_center_,*popt0) 
+            #plt.axvline(threshold,linestyle=':',linewidth=1,color='green')
+            if popt0[1]+4*popt0[2] > threshold:
+                threshold = popt0[1] + 4*popt0[2]
+            try: 
+                popt, pcov = curve_fit(gaus, bin_center_[bin_center_>threshold], subt_ped_[bin_center_>threshold])
+            except: 
+                popt, pcov = curve_fit(gaus, bin_center_, subt_ped_)
+
+            #plt.plot(bin_center_, subt_ped_, ds='steps-mid', lw=1, ls=':', color='magenta')
             plt.plot(bin_center_, gaus(bin_center_,*popt),
                      label=f'SPE fit: $\mu=${popt[1]:.4f}, $\sigma=${abs(popt[2]):.4f}',color='tab:orange')
             plt.axvline(threshold,linestyle=':',linewidth=1,color='magenta')
@@ -106,7 +124,10 @@ def plot_scaled_charge_histogram(filepath,thzero,startv,steps):
             popt2, _ = curve_fit(fixed_gaus, bin_center_[bin_center_>threshold], hist_[bin_center_>threshold])
             def fixed_ped_gaus(x,a):
                 return gaus(x,a,popt0[1]/popt[1],popt0[2]/popt[1])
-            popt02, _ = curve_fit(fixed_ped_gaus, bin_center_[bin_center_<th0/popt[1]], hist_[bin_center_<th0/popt[1]])
+            try:
+                popt02, _ = curve_fit(fixed_ped_gaus, bin_center_[bin_center_<th0/popt[1]], hist_[bin_center_<th0/popt[1]])
+            except:
+                popt02, _ = curve_fit(fixed_ped_gaus, bin_center_ , hist_)
             plt.plot(bin_center_, fixed_gaus(bin_center_,*popt2),
                      label=f'SPE fit:',color='tab:orange')
             #plt.plot(bin_center_, gaus(bin_center_,popt2[0],1,np.sqrt((popt[2]/popt[1])**2-(popt0[2]/popt[1])**2)))
@@ -120,69 +141,74 @@ def plot_scaled_charge_histogram(filepath,thzero,startv,steps):
             pdf.savefig()
             plt.clf()
 
-    print(popts)
-    plt.plot(setvs,[np.sqrt((popt[2]/popt[1])**2-(popt0[2]/popt[1])**2) for popt,popt0 in zip(popts,popts0)],marker='o')
-    plt.xlabel('Set Voltage [V]')
-    plt.ylabel('Charge Resolution [p.e.]')
-    plt.ylim(0,1.6)
-    plt.grid(color='gray',linestyle=':',linewidth=1)
-    plt.savefig(f'{filepath}/charge_resolution.pdf')
-    plt.clf()
+    with PdfPages(f'{filepath}/analysis_results.pdf') as pdf:
+        epC = 1.60217663e-7
+        gains = [(popt[1]-popt0[1])/epC for popt,popt0 in zip(popts,popts0)]
+        plt.plot(setvs,gains,label='Set voltage',marker='o')
+        plt.plot([np.mean(hvv) for hvv in hvvs],gains,label='Obs voltage',marker='o')
+        plt.xlim(1000,2000)
+        plt.xlabel('Voltage [V]')
+        plt.ylabel('Gain')
+        plt.grid(color='gray',linestyle=':',linewidth=1)
+        plt.yscale('log')
+        plt.legend()
+        plt.title('Gain Curve')
+        pdf.savefig()
+        plt.clf()
+ 
+        fig = plt.figure()
+        ax1 = fig.add_subplot(111)
+        ax2 = ax1.twinx()
 
-    plt.plot(setvs,[abs(popt0[2]) for popt0 in popts0],marker='o')
-    plt.xlabel('Set Voltage [V]')
-    plt.ylabel('Equivalent Noise Charge [pC]')
-    plt.ylim(0,0.2)
-    plt.savefig(f'{filepath}/noise.pdf')
-    plt.clf()
+        ax1.plot(setvs,setvs,color='gray',ls='--',linewidth=1)
+        ax1.errorbar(setvs,[np.mean(hvv) for hvv in hvvs],yerr=[np.std(hvv) for hvv in hvvs],label='Voltage',color='tab:blue')
+        ax2.errorbar(setvs,[np.mean(hvi) for hvi in hvis],yerr=[np.std(hvi) for hvi in hvis],label='Current',color='tab:orange')
+        ax1.set_xlabel('Set Voltage [V]')
+        ax1.set_ylabel('Obs Voltage [V]')
+        ax2.set_ylabel('Obs Current [$\mu$A]')
+        plt.title('HV mon')
 
-    with PdfPages(f'{filepath}/poisson.pdf') as pdf:
+        ax2.set_ylim(0,20)
+        
+        h1,l1 = ax1.get_legend_handles_labels()
+        h2,l2 = ax2.get_legend_handles_labels()
+
+        ax1.legend(h1+h2,l1+l2)
+        pdf.savefig()
+        plt.clf()
+
+        plt.plot(setvs,[np.sqrt((popt[2]/popt[1])**2-(popt0[2]/popt[1])**2) for popt,popt0 in zip(popts,popts0)],marker='o')
+        plt.xlabel('Set Voltage [V]')
+        plt.ylabel('Charge Resolution [p.e.]')
+        plt.ylim(0,1.6)
+        plt.grid(color='gray',linestyle=':',linewidth=1)
+        plt.title('Charge Resolution')
+        pdf.savefig()
+        plt.clf()
+
+        plt.plot(setvs,[abs(popt0[2]) for popt0 in popts0],marker='o')
+        plt.xlabel('Set Voltage [V]')
+        plt.ylabel('Equivalent Noise Charge [pC]')
+        plt.ylim(0,0.2)
+        plt.title('Noise')
+        pdf.savefig()
+        plt.clf()
+
         plt.errorbar(setvs, pois_mean, yerr=pois_err, marker='o', linestyle='')
         plt.xlabel('Set Voltage [V]')
         plt.ylabel('Poisson Mean [p.e.]')
         plt.grid(color='gray',linestyle=':',linewidth=1)
         plt.ylim(0,0.2)
+        plt.title('Poisson Mean')
         pdf.savefig()
         plt.clf()
         
         plt.hist(pois_mean, bins=100, range=(0,.2), histtype='step')
         plt.xlabel('Poisson Mean [p.e.]')
         plt.ylabel('Entry')
+        plt.title('Poisson Mean')
         pdf.savefig()
         plt.clf()
-
-    epC = 1.60217663e-7
-    gains = [(popt[1]-popt0[1])/epC for popt,popt0 in zip(popts,popts0)]
-    plt.plot(setvs,gains,label='Set voltage',marker='o')
-    plt.plot([np.mean(hvv) for hvv in hvvs],gains,label='Obs voltage',marker='o')
-    plt.xlim(1000,2000)
-    plt.xlabel('Voltage [V]')
-    plt.ylabel('Gain')
-    plt.grid(color='gray',linestyle=':',linewidth=1)
-    plt.yscale('log')
-    plt.legend()
-    plt.savefig(f'{filepath}/gain.pdf')
-    plt.clf()
- 
-    fig = plt.figure()
-    ax1 = fig.add_subplot(111)
-    ax2 = ax1.twinx()
-
-    ax1.plot(setvs,setvs,color='gray',ls='--',linewidth=1)
-    ax1.errorbar(setvs,[np.mean(hvv) for hvv in hvvs],yerr=[np.std(hvv) for hvv in hvvs],label='Voltage',color='tab:blue')
-    ax2.errorbar(setvs,[np.mean(hvi) for hvi in hvis],yerr=[np.std(hvi) for hvi in hvis],label='Current',color='tab:orange')
-    ax1.set_xlabel('Set Voltage [V]')
-    ax1.set_ylabel('Obs Voltage [V]')
-    ax2.set_ylabel('Obs Current [$\mu$A]')
-
-    ax2.set_ylim(0,20)
-    
-    h1,l1 = ax1.get_legend_handles_labels()
-    h2,l2 = ax2.get_legend_handles_labels()
-
-    ax1.legend(h1+h2,l1+l2)
-    plt.savefig(f'{filepath}/hv_mon.pdf')
-    plt.clf()
 
 
 if __name__ == '__main__':

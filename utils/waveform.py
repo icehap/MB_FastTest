@@ -94,7 +94,7 @@ def start_single_waveform_stream(session, options):
 def get_baseline(session, options, path):
     session.startDEggSWTrigStream(options.channel, options.swTrigDelay)
     wf = []
-    for i in tqdm(range(50),desc='[baseline]'):
+    for i in tqdm(range(50),desc='[baseline]',leave=False):
         datadic = get_waveform(session, options, setv=0, filename=f'{path}/baseline.hdf5')
         wf.append(datadic['waveform'])
     session.endStream()
