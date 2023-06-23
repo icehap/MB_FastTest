@@ -56,7 +56,11 @@ def chargestamp_multiple(parser, path, channel=None, doAnalysis=False, fillzero=
         session.startDEggExternalTrigStream(channel)
     else:
         session = startIcebootSession(parser)
-        threshold = waveform.get_baseline(session, options, path) + 9
+        if len(options.dacSettings) == 0:
+            session.setDAC('A', 30000)
+            session.setDAC('B', 30000)
+        threshold = waveform.get_baseline(session, options, path, channel=channel) + 9
+        print(f'Threshold for channel {channel}: {threshold}')
         session.startDEggThreshTrigStream(channel,threshold)
 
     time.sleep(1)
