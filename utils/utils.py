@@ -1,14 +1,16 @@
 import datetime 
 import os
 import time
+import shutil
 
-def pathSetting(options, measname, mon=False): 
+def pathSetting(options, measname, mon=False, dedicated=None): 
+    date = datetime.date.today()
     snum = options.mbsnum 
+
     if len(snum.split('/')) > 1: 
         print('Do not use "/" in the MB serial number. Exit.')
         sys.exit(0)
     
-    date = datetime.date.today()
     prename = f'mon_results/{measname}/{snum}/{date}' if mon else f'results/{measname}/{snum}/{date}'
     index = 1
     if options.specific is not None:
@@ -20,6 +22,18 @@ def pathSetting(options, measname, mon=False):
     while os.path.isdir(path):
         index = index + 1
         path = prepath + str(index)
+
+    if dedicated is not None:
+        prepath = f'results/{measname}/{dedicated}'
+        path = f'{prepath}/latest'
+        if os.path.isdir(path):
+            os.makedirs(f'{prepath}/old',exist_ok=True)
+            oldpath = f'{prepath}/old/Run'
+            index = 1
+            while os.path.isdir(f'{oldpath}{index}'):
+                index += 1
+            shutil.move(path,f'{oldpath}{index}')
+
     print(f'=== File path is: {path} ===')
     os.system(f'mkdir -p {path}')
     with open(f'{path}/log.txt','a') as f:

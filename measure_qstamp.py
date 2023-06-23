@@ -26,26 +26,35 @@ def main():
 
     (options, args) = parser.parse_args()
     print(options)
+    
+    path = utils.pathSetting(options,'QSTAMP2')
+
     if options.hvv is not None:
-        chargestamp_multiple(parser)
+        chargestamp_multiple(parser, path, doAnalysis=options.analysis)
     end_time = time.time()
     print(f'Duration: {end_time - start_time:.1f} sec')
 
-def chargestamp_multiple(parser):
+def chargestamp_multiple(parser, path, channel=None, doAnalysis=False, fillzero=False, hvset=None, nevents=None):
     (options, args) = parser.parse_args()
-    channel = int(options.channel)
 
-    path = utils.pathSetting(options,'QSTAMP2')
-    hdfout = f'{path}/data.hdf'
+    os.makedirs(f'{path}/raw',exist_ok=True)
+    
+    if channel is None:
+        channel = int(options.channel)
+        hdfout = f'{path}/raw/data.hdf'
+    else:
+        hdfout = f'{path}/raw/data_ch{channel}.hdf'
 
-    set_voltages = [int(i) for i in str(options.hvv).split(',')]
+    if hvset is not None:
+        set_voltages = [int(i) for i in str(hvset).split(',')]
+    else:
+        set_voltages = [int(i) for i in str(options.hvv).split(',')]
 
     if options.led:
         session = startIcebootSession(parser)
         session.setDEggExtTrigSourceICM()
         session.startDEggExternalTrigStream(channel)
     else:
-        os.makedirs(f'{path}/raw',exist_ok=True)
         session = startIcebootSession(parser)
         threshold = waveform.get_baseline(session, options, path) + 9
         session.startDEggThreshTrigStream(channel,threshold)
@@ -53,7 +62,7 @@ def chargestamp_multiple(parser):
     time.sleep(1)
     session.enableHV(channel)
 
-    pdf = PdfPages(f'{path}/charge_histograms.pdf')
+    pdf = PdfPages(f'{path}/charge_histograms_ch{channel}.pdf')
 
     i = 0
     prev_setv = 0
@@ -63,12 +72,12 @@ def chargestamp_multiple(parser):
         led_off(session, options.led)
         #print(f'Set voltage: {setv} V')
         session.setDEggHV(channel,int(setv))
-        for j in (pbar := tqdm(range(int(abs(setv-prev_setv)/50+1)),leave=False)):
+        for j in (pbar := tqdm(range(int(abs(setv-prev_setv)/50+1)*2),leave=False)):
             pbar.set_description(f"Waiting for setv {setv} V")
-            time.sleep(1)
+            time.sleep(0.5)
         led_on(session, options.freq, options.intensity, setLEDon(1,False), options.led)
         try:
-            datadic = charge_readout(session, options, int(setv), hdfout)
+            datadic = charge_readout(session, options, channel, int(setv), hdfout, fillzero=fillzero, nevents=nevents)
         except:
             traceback.print_exc()
             session.close()
@@ -87,11 +96,11 @@ def chargestamp_multiple(parser):
     session.close()
     pdf.close()
 
-    if options.analysis:
+    if doAnalysis:
         from analysis.qstamp_analyze import plot_scaled_charge_histogram_wrapper
-        ana = plot_scaled_charge_histogram_wrapper(filepath=path,thzero=0.32,startv=1300,steps=250)
+        ana = plot_scaled_charge_histogram_wrapper(filepath=path,thzero=0.32,startv=1300,steps=250,channel=channel)
 
-    return 
+    return path
 
 def led_on(session, freq, bias, ledsel, ledon):
     if ledon:
@@ -101,20 +110,34 @@ def led_off(session, ledon):
     if ledon:
         disableLEDflashing(session)
 
-def charge_readout(session, options, setHV, filename):
+def charge_readout(session, options, channel, setHV, filename, fillzero=False, nevents=None):
     datadic = dict_init()
     niter = 100
-    datadic['hvv'] = [session.readSloADC_HVS_Voltage(options.channel) for i in range(niter)]
-    datadic['hvi'] = [session.readSloADC_HVS_Current(options.channel) for i in range(niter)]
+    datadic['hvv'] = [session.readSloADC_HVS_Voltage(channel) for i in range(niter)]
+    datadic['hvi'] = [session.readSloADC_HVS_Current(channel) for i in range(niter)]
     datadic['setv'] = setHV
     datadic['temp'] = [session.readSloADCTemperature() for i in range(niter)]
 
+    if nevents is None:
+        nevents = int(options.nevents)
+    else:
+        nevents = int(nevents)
+
     if options.led:
-        block = session.DEggReadChargeBlockFixed(140,155,14*options.nevents,timeout=options.timeout)
+        block = session.DEggReadChargeBlockFixed(140,155,14*nevents,timeout=options.timeout)
     else: 
-        block = session.DEggReadChargeBlock(10,15,14*options.nevents,timeout=options.timeout)
-    datadic['charge'] = [(rec.charge*1e12) for rec in block[options.channel] if not rec.flags]
-    datadic['timestamp'] = [rec.timeStamp for rec in block[options.channel] if not rec.flags]
+        try:
+            block = session.DEggReadChargeBlock(10,15,14*nevents,timeout=options.timeout)
+        except:
+            if fillzero:
+                datadic['charge'] = [0]
+                datadic['timestamp'] = [0]
+                store_hdf(filename, datadic)
+                return datadic
+            else:
+                raise Exception
+    datadic['charge'] = [(rec.charge*1e12) for rec in block[channel] if not rec.flags]
+    datadic['timestamp'] = [rec.timeStamp for rec in block[channel] if not rec.flags]
     #print(np.mean(datadic['charge']))
     store_hdf(filename, datadic)
     return datadic
