@@ -69,60 +69,66 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
     pedth = 0.1
     
     postfix = '' if channel is None else f'_ch{channel}'
-    with PdfPages(f'{filepath}/charge_histogram_fit{postfix}.pdf') as pdf:
-        for charge, setv in zip(charges, setvs):
-            threshold = th0+((setv-startv)/steps)**2 if setv > startv else th0
-            (hist_, bins_, _) = plt.hist(charge, bins=500, range=(-2,8), histtype='step')
-            bin_center_ = np.array([(bins_[i]+bins_[i+1])/2 for i in range(len(bins_)-1)])
-            
-            # ped fitting
+    pdf = PdfPages(f'{filepath}/charge_histogram_fit{postfix}.pdf')
+    linearPdf = PdfPages(f'{filepath}/Linear_charge_histogram_fit{postfix}.pdf')
+    for charge, setv in zip(charges, setvs):
+        threshold = th0+((setv-startv)/steps)**2 if setv > startv else th0
+        (hist_, bins_, _) = plt.hist(charge, bins=500, range=(-2,8), histtype='step')
+        bin_center_ = np.array([(bins_[i]+bins_[i+1])/2 for i in range(len(bins_)-1)])
+        
+        # ped fitting
+        try:
+            popt0, pcov0 = curve_fit(gaus, bin_center_[(bin_center_<pedth) * (bin_center_>pedmin)], hist_[(bin_center_<pedth) * (bin_center_>pedmin)])
+        except:
+            popt0 = [0,0,0]
+        n_ped_hist = gaus(bin_center_, *popt0)
+        plt.plot(bin_center_, n_ped_hist, color='gray',ls='--',lw=1)
+        plt.axvline(pedmin, ls=':', lw=0.5, color='gray', alpha=.5)
+        plt.axvline(pedth,  ls=':', lw=0.5, color='gray', alpha=.5)
+
+        pois_mean.append(-np.log(np.sum(n_ped_hist)/len(charge)))
+        pois_err.append(1/np.sqrt(np.sum(n_ped_hist)))
+        #print(np.sum(n_ped_hist), len(charge))
+        
+        # spe fitting
+        #try:
+        #    popt, pcov = curve_fit(gaus, bin_center_[bin_center_>threshold], hist_[bin_center_>threshold])
+        #except RuntimeError:
+        #    subt_ped_ = hist_ - gaus(bin_center_,popt0[0],popt0[1],popt0[2]) 
+        #    popt, pcov = curve_fit(gaus, bin_center_[bin_center_>threshold], subt_ped_[bin_center_>threshold])
+        
+        subt_ped_ = hist_ - gaus(bin_center_,*popt0) 
+        #plt.axvline(threshold,linestyle=':',linewidth=1,color='green')
+        if popt0[1]+4*popt0[2] > threshold:
+            threshold = popt0[1] + 4*popt0[2]
+        try: 
+            popt, pcov = curve_fit(gaus, bin_center_[bin_center_>threshold], subt_ped_[bin_center_>threshold])
+        except: 
             try:
-                popt0, pcov0 = curve_fit(gaus, bin_center_[(bin_center_<pedth) * (bin_center_>pedmin)], hist_[(bin_center_<pedth) * (bin_center_>pedmin)])
+                popt, pcov = curve_fit(gaus, bin_center_, subt_ped_)
             except:
-                popt0 = [0,0,0]
-            n_ped_hist = gaus(bin_center_, *popt0)
-            plt.plot(bin_center_, n_ped_hist, color='gray',ls='--',lw=1)
-            plt.axvline(pedmin, ls=':', lw=0.5, color='gray', alpha=.5)
-            plt.axvline(pedth,  ls=':', lw=0.5, color='gray', alpha=.5)
+                popt = [0,0,0]
 
-            pois_mean.append(-np.log(np.sum(n_ped_hist)/len(charge)))
-            pois_err.append(1/np.sqrt(np.sum(n_ped_hist)))
-            #print(np.sum(n_ped_hist), len(charge))
-            
-            # spe fitting
-            #try:
-            #    popt, pcov = curve_fit(gaus, bin_center_[bin_center_>threshold], hist_[bin_center_>threshold])
-            #except RuntimeError:
-            #    subt_ped_ = hist_ - gaus(bin_center_,popt0[0],popt0[1],popt0[2]) 
-            #    popt, pcov = curve_fit(gaus, bin_center_[bin_center_>threshold], subt_ped_[bin_center_>threshold])
-            
-            subt_ped_ = hist_ - gaus(bin_center_,*popt0) 
-            #plt.axvline(threshold,linestyle=':',linewidth=1,color='green')
-            if popt0[1]+4*popt0[2] > threshold:
-                threshold = popt0[1] + 4*popt0[2]
-            try: 
-                popt, pcov = curve_fit(gaus, bin_center_[bin_center_>threshold], subt_ped_[bin_center_>threshold])
-            except: 
-                try:
-                    popt, pcov = curve_fit(gaus, bin_center_, subt_ped_)
-                except:
-                    popt = [0,0,0]
+        #plt.plot(bin_center_, subt_ped_, ds='steps-mid', lw=1, ls=':', color='magenta')
+        plt.plot(bin_center_, gaus(bin_center_,*popt),
+                 label=f'SPE fit: $\mu=${popt[1]:.4f}, $\sigma=${abs(popt[2]):.4f}',color='tab:orange')
+        plt.axvline(threshold,linestyle=':',linewidth=1,color='magenta')
+        plt.xlabel('Charge [pC]')
+        plt.ylabel('Entry')
+        plt.legend()
+        plt.title(f'Set Voltage: {setv} V')
+        linearPdf.savefig()
+        plt.ylim(0.5,np.exp(np.log(np.max(hist_))*1.2))
+        plt.yscale('log')
+        pdf.savefig()
+        plt.clf()
+        popts.append(popt)
+        popts0.append(popt0)
 
-            #plt.plot(bin_center_, subt_ped_, ds='steps-mid', lw=1, ls=':', color='magenta')
-            plt.plot(bin_center_, gaus(bin_center_,*popt),
-                     label=f'SPE fit: $\mu=${popt[1]:.4f}, $\sigma=${abs(popt[2]):.4f}',color='tab:orange')
-            plt.axvline(threshold,linestyle=':',linewidth=1,color='magenta')
-            plt.xlabel('Charge [pC]')
-            plt.ylabel('Entry')
-            plt.yscale('log')
-            plt.ylim(0.5,np.exp(np.log(np.max(hist_))*1.2))
-            plt.legend()
-            plt.title(f'Set Voltage: {setv} V')
-            pdf.savefig()
-            plt.clf()
-            popts.append(popt)
-            popts0.append(popt0)
+    pdf.close()
+    linearPdf.close()
 
+    '''
     with PdfPages(f'{filepath}/charge_histogram_scaled{postfix}.pdf') as pdf:
         for charge, setv, popt in zip(charges, setvs, popts):
             (hist_,bins_,_) = plt.hist(charge/popt[1], bins=600, range=(-2,4), histtype='step')
@@ -153,6 +159,7 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
             plt.title(f'Set Voltage: {setv} V')
             pdf.savefig()
             plt.clf()
+    '''
 
     with PdfPages(f'{filepath}/analysis_results{postfix}.pdf') as pdf:
         epC = 1.60217663e-7
@@ -163,9 +170,10 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
         plt.xlabel('Voltage [V]')
         plt.ylabel('Gain')
         plt.grid(color='gray',linestyle=':',linewidth=1)
-        plt.yscale('log')
         plt.legend()
         plt.title('Gain Curve')
+        pdf.savefig()
+        plt.yscale('log')
         pdf.savefig()
         plt.clf()
  

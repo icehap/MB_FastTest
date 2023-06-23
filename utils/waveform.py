@@ -8,7 +8,9 @@ import traceback
 from sensorcheck import readSloAdcChannel
 from tqdm import tqdm
 
-def get_waveform(session, options, setv, filename):
+def get_waveform(session, options, setv, filename,channel=None):
+    if channel is None:
+        channel = options.channel
     while session.fpgaVersion()==65535:
         firmware_name = 'degg_fw_v0x110.rbf.gz'
         session.flashConfigureCycloneFPGA(firmware_name)
@@ -27,10 +29,10 @@ def get_waveform(session, options, setv, filename):
     datadic['timestamp'] = readout['timestamp']
     datadic['pc_time'] = time.time()
     datadic['temperature'] = session.readSloADCTemperature()
-    datadic['channel'] = options.channel
+    datadic['channel'] = channel
     datadic['hvs'] = np.array([float(setv), 
-                               float(session.readSloADC_HVS_Voltage(options.channel)), 
-                               float(session.readSloADC_HVS_Current(options.channel))])
+                               float(session.readSloADC_HVS_Voltage(channel)), 
+                               float(session.readSloADC_HVS_Current(channel))])
     datadic['mbvrail'] = np.array([readSloAdcChannel(session,12),
                                    readSloAdcChannel(session,13),
                                    readSloAdcChannel(session,5),
@@ -91,11 +93,17 @@ def start_single_waveform_stream(session, options):
         print(f'Threshold trigger mode with trig threshold of {options.threshold}')
         session.startDEggThreshTrigStream(options.channel, options.threshold)
 
-def get_baseline(session, options, path):
-    session.startDEggSWTrigStream(options.channel, options.swTrigDelay)
+def get_baseline(session, options, path, channel=None):
+    os.makedirs(f'{path}/calib',exist_ok=True)
+    if channel is None:
+        channel = options.channel
+        outfilename = f'{path}/calib/baseline.hdf5'
+    else:
+        outfilename = f'{path}/calib/baseline_ch{channel}.hdf5'
+    session.startDEggSWTrigStream(channel, options.swTrigDelay)
     wf = []
     for i in tqdm(range(50),desc='[baseline]',leave=False):
-        datadic = get_waveform(session, options, setv=0, filename=f'{path}/baseline.hdf5')
+        datadic = get_waveform(session, options, setv=0, filename=outfilename, channel=channel)
         wf.append(datadic['waveform'])
     session.endStream()
     baseline = np.mean(np.array(wf))
