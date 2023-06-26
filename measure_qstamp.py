@@ -53,8 +53,10 @@ def chargestamp_multiple(parser, path, channel=None, doAnalysis=False, fillzero=
     session = startIcebootSession(parser)
     while session.fpgaVersion()==65535:
         utils.flashFPGA(session)
-    if not session.readHVInterlock:
+    if not session.readHVInterlock():
+        print("Need to set PMT HV interlock... I'll do it.")
         os.system('python3 ../fh_icm_api/pmt_hv_enable.py')
+        print("Done")
         sleep(1)
 
     if options.led:
