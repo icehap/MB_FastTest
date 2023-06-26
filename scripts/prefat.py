@@ -16,6 +16,7 @@ def main():
     shared_options.LED(parser)
     shared_options.Waveform(parser)
     parser.add_option('--deggnum',help='degg number',type=str,default='None')
+    parser.add_option('--nevts',help='#wfs',default=None)
     (options, args) = parser.parse_args()
     path = utils.pathSetting(options, 'GainCheck', dedicated=f'{options.deggnum}')
 
@@ -24,8 +25,13 @@ def main():
     else:
         hvv = options.hvv
 
+    if options.nevts is not None:
+        nevents = float(options.nevts)
+    else:
+        nevents = 50e3
+
     for ch in range(2):
-        chargestamp_multiple(parser, path, ch, doAnalysis=True,fillzero=True,hvset=hvv,nevents=50e3)
+        chargestamp_multiple(parser, path, ch, doAnalysis=True,fillzero=True,hvset=hvv,nevents=nevents)
     
     os.system(f'evince {path}/analysis_results_ch0.pdf &')
     os.system(f'evince {path}/analysis_results_ch1.pdf &')
