@@ -50,12 +50,16 @@ def chargestamp_multiple(parser, path, channel=None, doAnalysis=False, fillzero=
     else:
         set_voltages = [int(i) for i in str(options.hvv).split(',')]
 
+    session = startIcebootSession(parser)
+    utils.flashFPGA(session)
+    if not session.readHVInterlock:
+        os.system('python3 ../fh_icm_api/pmt_hv_enable.py')
+        sleep(1)
+
     if options.led:
-        session = startIcebootSession(parser)
         session.setDEggExtTrigSourceICM()
         session.startDEggExternalTrigStream(channel)
     else:
-        session = startIcebootSession(parser)
         if len(options.dacSettings) == 0:
             session.setDAC('A', 30000)
             session.setDAC('B', 30000)
