@@ -8,11 +8,11 @@ from mkplot import plotSetting
 import signal
 
 def doLEDflashing(session, freq=5000, bias=0x6000, flashermask=0xFFFF):
-    print('Now preparing for LED...')
+    #print('Now preparing for LED...')
     session.enableCalibrationPower()
     session.setCalibrationSlavePowerMask(2)
     #session.enableCalibrationTrigger(1000)
-    print('Now flashing LED...')
+    #print('Now flashing LED...')
     session.icmStartCalTrig(0,freq) # Unit 1: 17.06667[usec] 
     #session.setFlasherBias(0x5310)
     session.setFlasherBias(bias)

@@ -17,18 +17,19 @@ def main():
     shared_options.Waveform(parser)
     parser.add_option('--deggnum',help='degg number',type=str,default='None')
     parser.add_option('--nevts',help='#wfs',default=None)
+    parser.add_option('--qmax',default=None)
     (options, args) = parser.parse_args()
     path = utils.pathSetting(options, 'GainCheck', dedicated=f'{options.deggnum}')
 
     if options.hvv is None:
-        hvv = '1200,1300,1400,1500,1600'
+        hvv = '1200,1300,1400,1500,1600,1700'
     else:
         hvv = options.hvv
 
     if options.nevts is not None:
         nevents = float(options.nevts)
     else:
-        nevents = 50e3
+        nevents = 10e3
 
     for ch in range(2):
         chargestamp_multiple(parser, path, ch, doAnalysis=True,fillzero=True,hvset=hvv,nevents=nevents)

@@ -28,7 +28,7 @@ def plot_charge_histogram(filepath):
 
     with PdfPages(f'{filepath}/charge_histogram_offline.pdf') as pdf:
         for charge, setv in zip(charges, setvs):
-            plt.hist(charge,bins=500,range=(-2,8),histtype='step')
+            plt.hist(charge,bins=700,range=(-2,10),histtype='step')
             plt.xlabel('Charge [pC]')
             plt.ylabel('Entry')
             plt.yscale('log')
@@ -44,7 +44,7 @@ def plot_charge_histogram(filepath):
 def plot_scaled_charge_histogram(filepath,thzero,startv,steps):
     plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps)
 
-def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=None):
+def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=None,qmax=None):
     with open(f'{filepath}/fit_config.txt','a') as f:
         f.write(f'channel: {channel}\n')
         f.write(f'th0: {thzero}\nstartv: {startv}\nsteps: {steps}\n')
@@ -71,9 +71,14 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
     postfix = '' if channel is None else f'_ch{channel}'
     pdf = PdfPages(f'{filepath}/charge_histogram_fit{postfix}.pdf')
     linearPdf = PdfPages(f'{filepath}/Linear_charge_histogram_fit{postfix}.pdf')
+    if qmax is not None:
+        binmax = float(qmax)
+    else:
+        binmax = 10
+
     for charge, setv in zip(charges, setvs):
         threshold = th0+((setv-startv)/steps)**2 if setv > startv else th0
-        (hist_, bins_, _) = plt.hist(charge, bins=500, range=(-2,8), histtype='step')
+        (hist_, bins_, _) = plt.hist(charge, bins=1600, range=(-2,30), histtype='step')
         bin_center_ = np.array([(bins_[i]+bins_[i+1])/2 for i in range(len(bins_)-1)])
         
         # ped fitting
@@ -117,6 +122,7 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
         plt.ylabel('Entry')
         plt.legend()
         plt.title(f'Set Voltage: {setv} V')
+        plt.xlim(-2,binmax)
         linearPdf.savefig()
         plt.ylim(0.5,np.exp(np.log(np.max(hist_))*1.2))
         plt.yscale('log')
@@ -198,7 +204,10 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
         pdf.savefig()
         plt.clf()
 
-        plt.plot(setvs,[np.sqrt((popt[2]/popt[1])**2-(popt0[2]/popt[1])**2) for popt,popt0 in zip(popts,popts0)],marker='o')
+        try:
+            plt.plot(setvs,[np.sqrt((popt[2]/popt[1])**2-(popt0[2]/popt[1])**2) for popt,popt0 in zip(popts,popts0)],marker='o')
+        except:
+            pass
         plt.xlabel('Set Voltage [V]')
         plt.ylabel('Charge Resolution [p.e.]')
         plt.ylim(0,1.6)
