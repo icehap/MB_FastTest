@@ -15,9 +15,7 @@ import traceback
 
 def main():
     print(datetime.datetime.now())
-    led_int_1 = [20480 + 2048*i for i in range(5)]
-    led_intensity_ = [[0x5300,0x5380,0x5400,0x5480,0x5500,0x5580,0x5600,0x5680,0x5700,0x5780,0x5800],
-                      [0x5500,0x5580,0x5600,0x5680,0x5700,0x5780,0x5800,0x5880,0x5900,0x5980,0x5a00]]
+    led_int_1 = [int(0x4800) + 2048*i for i in range(6)]
     start_time = time.time()
 
     parser = getParser()
@@ -30,11 +28,12 @@ def main():
     parser.add_option('--basehv0',default=None)
     parser.add_option('--basehv1',default=None)
     parser.add_option('--startv',type=int,default=1300)
+    parser.add_option('--ledfor0',default=None)
+    parser.add_option('--ledfor1',default=None)
     (options,args) = parser.parse_args()
     path = utils.pathSetting(options, 'SPELED', dedicated=f'{options.deggnum}')
 
     if options.hvv is None:
-        #hvv = '1300,1350,1400,1450,1500,1550,1600,1650,1700,1750,1800,1850,1900,1950'
         hvv = '1300,1400,1500,1600,1700,1800,1900,1950'
     else:
         hvv = options.hvv
@@ -50,29 +49,37 @@ def main():
     if options.basehv1 is not None:
         basehv[1] = int(options.basehv1)
 
+    do_led_scan = [options.ledfor0, options.ledfor1]
+
     for ch in range(2):
-        led_intensity_setting = led_intensity_[ch]
-        #qmeans = led_scan(parser,path,ch,led_setting=led_intensity_setting, debug=options.debug, basehv=basehv[ch])
-        qmeans = led_scan(parser,path,ch,led_setting=led_int_1, debug=options.debug, basehv=basehv[ch])
-        print(qmeans)
-        for i, qmean in enumerate(qmeans):
-            if qmean > 0.1:
-                break
-        if i!=0:
-            led_int_2 = [led_int_1[i-1] + 256*j for j in range(8)]
-            qmeans_2 = led_scan(parser,path,ch,led_setting=led_int_2,debug=options.debug, basehv=basehv[ch])
-            for j, qmean_2 in enumerate(qmeans_2):
-               if qmean_2 > 0.1:
-                   break
+        if do_led_scan[ch] is None:
+            qmeans = led_scan(parser,path,ch,led_setting=led_int_1, debug=options.debug, basehv=basehv[ch])
+            print(qmeans)
+            for i, qmean in enumerate(qmeans):
+                if qmean > 0.1:
+                    break
+            if i!=0:
+                led_int_2 = [led_int_1[i-1] + 256*j for j in range(9)]
+                qmeans_2 = led_scan(parser,path,ch,led_setting=led_int_2,debug=options.debug, basehv=basehv[ch])
+                for j, qmean_2 in enumerate(qmeans_2):
+                   if qmean_2 > 0.1:
+                       break
+            else:
+                led_int_2 = led_int_1
+                j = 0
+            print(qmeans_2)
+            this_intensity = led_int_2[j]
         else:
-            led_int_2 = led_int_1
-            j = 0
-        print(qmeans_2)
-        print(f'LED intensity: {hex(led_int_2[j])}')
-        chargestamp_multiple(parser,path,ch,doAnalysis=True,fillzero=True,hvset=hvv,nevents=nevents,led_intensity=led_int_2[j],debug=options.debug,fillnan=True,analysis_startv=options.startv)
+            this_intensity = int(do_led_scan[ch])
+        print(f'LED intensity: {hex(this_intensity)')
+        with open(f'{path}/log.txt','a') as f:
+            f.write(f'\nLED intensity for channel {ch}: {hex(this_intensity)}')
+        chargestamp_multiple(parser,path,ch,doAnalysis=True,fillzero=True,hvset=hvv,nevents=nevents,led_intensity=this_intensity,debug=options.debug,fillnan=True,analysis_startv=options.startv)
 
     end_time = time.time()
     print(f'Duration: {end_time - start_time:.1f} sec')
+    with open(f'{path}/log.txt','a') as f:
+        f.write(f'\nDuration: {end_time - start_time:.1f} sec')
 
 def led_scan(parser,path,channel,led_setting,debug=False, basehv=None):
     this_path = f'{path}/led_scan'
@@ -138,9 +145,12 @@ def chargestamp_led(parser, path, channel=None, doAnalysis=False, fillzero=False
             continue
         simple_plot_qhist(pdf, datadic, title=f'LED: {hex(led_intensity)}, SetV: {setv} V')
         qs = np.array(datadic['charge'])
-        obs_qmean.append(np.mean(qs[qs>-10]))
+        this_qmean = np.mean(qs[qs>-10])
+        obs_qmean.append(this_qmean)
         prev_setv = setv
-        i += 1
+        if this_qmean > 10:
+            print('exceeds 10 p.e. no need to take data anymore')
+            break
 
     led_off(session, options.led)
     session.endStream()
