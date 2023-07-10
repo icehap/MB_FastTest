@@ -13,6 +13,7 @@ import utils
 import shared_options
 import waveform
 import traceback
+import shutil
 
 def main():
     start_time = time.time()
@@ -78,7 +79,15 @@ def chargestamp_multiple(parser, path, channel=None, doAnalysis=False, fillzero=
     time.sleep(1)
     session.enableHV(channel)
 
-    pdf = PdfPages(f'{path}/charge_histograms_ch{channel}.pdf')
+    pdf_file_path = f'{path}/charge_histograms_ch{channel}.pdf'
+    if os.path.isfile(pdf_file_path):
+        os.makedirs(f'{path}/plots',exist_ok=True)
+        oldpath = f'{path}/plots/charge_histograms_ch{channel}'
+        index = 1
+        while os.path.isfile(f'{oldpath}_{index}.pdf'):
+            index += 1
+        shutil.move(pdf_file_path,f'{oldpath}_{index}.pdf')
+    pdf = PdfPages(pdf_file_path)
 
     i = 0
     prev_setv = 0
@@ -118,7 +127,7 @@ def chargestamp_multiple(parser, path, channel=None, doAnalysis=False, fillzero=
         else:
             startv = 1300
         from analysis.qstamp_analyze import plot_scaled_charge_histogram_wrapper
-        ana = plot_scaled_charge_histogram_wrapper(filepath=path,thzero=0.32,startv=startv,steps=250,channel=channel,qmax=options.qmax)
+        ana = plot_scaled_charge_histogram_wrapper(filepath=path,thzero=0.32,startv=startv,steps=250,channel=channel,qmax=options.qmax,do_gain_fit=options.gainfit)
 
     return path
 
@@ -138,6 +147,7 @@ def charge_readout(session, options, channel, setHV, filename, fillzero=False, n
     datadic['hvi'] = [session.readSloADC_HVS_Current(channel) for i in range(niter)]
     datadic['setv'] = setHV
     datadic['temp'] = [session.readSloADCTemperature() for i in range(niter)]
+    datadic['pctime'] = time.time()
 
     if nevents is None:
         nevents = int(options.nevents)
@@ -171,7 +181,7 @@ def charge_readout(session, options, channel, setHV, filename, fillzero=False, n
     return datadic
 
 def dict_init():
-    return {'hvv':[0],'hvi':[0],'setv':0,'temp':[0],'charge':[0],'timestamp':[0]}
+    return {'hvv':[0],'hvi':[0],'setv':0,'temp':[0],'charge':[0],'timestamp':[0],'pctime':0}
 
 def store_hdf(filename, datadic):
     if not os.path.isfile(filename):
@@ -182,6 +192,7 @@ def store_hdf(filename, datadic):
             temp = tables.Float32Col(shape=np.asarray(datadic['temp']).shape)
             timestamp = tables.Int32Col(shape=np.asarray(datadic['timestamp']).shape)
             charge = tables.Float32Col(shape=np.asarray(datadic['charge']).shape)
+            pctime = tables.Float32Col()
         with tables.open_file(filename,'w') as f:
             table = f.create_table('/','data',Event)
     with tables.open_file(filename,'a') as f:

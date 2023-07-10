@@ -32,10 +32,10 @@ def main():
     parser.add_option('--ledfor1',default=None)
     parser.add_option('--gainfit',action='store_true',default=False)
     (options,args) = parser.parse_args()
-    path = utils.pathSetting(options, 'SPELED', dedicated=f'{options.deggnum}')
+    path = utils.pathSetting(options, 'GainLED', mon=True,dedicated=f'{options.deggnum}')
 
     if options.hvv is None:
-        hvv = '1300,1400,1500,1600,1700,1800,1900,1950'
+        hvv = '1400,1500,1600,1700,1800'
     else:
         hvv = options.hvv
 
@@ -52,6 +52,7 @@ def main():
 
     do_led_scan = [options.ledfor0, options.ledfor1]
 
+    led_intensity_spe = [0,0]
     for ch in range(2):
         if do_led_scan[ch] is None:
             qmeans = led_scan(parser,path,ch,led_setting=led_int_1, debug=options.debug, basehv=basehv[ch])
@@ -72,10 +73,19 @@ def main():
             this_intensity = led_int_2[j]
         else:
             this_intensity = int(do_led_scan[ch])
+        led_intensity_spe[ch] = this_intensity
         print(f'LED intensity: {hex(this_intensity)}')
         with open(f'{path}/log.txt','a') as f:
             f.write(f'\nLED intensity for channel {ch}: {hex(this_intensity)}')
-        chargestamp_multiple(parser,path,ch,doAnalysis=True,fillzero=True,hvset=hvv,nevents=nevents,led_intensity=this_intensity,debug=options.debug,fillnan=True,analysis_startv=options.startv)
+
+    interval_time = 20
+    div_time = 4
+    while True:
+        for ch in range(2):
+            chargestamp_multiple(parser,path,ch,doAnalysis=False,fillzero=True,hvset=hvv,nevents=nevents,led_intensity=led_intensity_spe[ch],debug=options.debug,fillnan=True)
+            time.sleep(0.1)
+        for i in tqdm(range(interval_time*div_time),leave=False):
+            time.sleep(1/div_time)        
 
     end_time = time.time()
     print(f'Duration: {end_time - start_time:.1f} sec')

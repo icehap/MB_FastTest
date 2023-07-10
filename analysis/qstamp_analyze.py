@@ -10,6 +10,7 @@ from tqdm import tqdm
 from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
 from scipy import integrate
+import datetime
 
 def gaus(x,a,mu,sigma):
     return a*np.exp(-(x-mu)**2/(2*sigma**2))
@@ -44,7 +45,7 @@ def plot_charge_histogram(filepath):
 def plot_scaled_charge_histogram(filepath,thzero,startv,steps):
     plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps)
 
-def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=None,qmax=None):
+def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=None,qmax=None,do_gain_fit=False):
     with open(f'{filepath}/fit_config.txt','a') as f:
         f.write(f'channel: {channel}\n')
         f.write(f'th0: {thzero}\nstartv: {startv}\nsteps: {steps}\n')
@@ -171,7 +172,18 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
         epC = 1.60217663e-7
         gains = [(popt[1]-popt0[1])/epC for popt,popt0 in zip(popts,popts0)]
         plt.plot(setvs,gains,label='Set voltage',marker='o')
-        plt.plot([np.mean(hvv) for hvv in hvvs],gains,label='Obs voltage',marker='o')
+        mean_hvs = [np.mean(hvv) for hvv in hvvs]
+        plt.plot(mean_hvs,gains,label='Obs voltage',marker='o')
+        if do_gain_fit:
+            def gain_curve(x,a,b):
+                return a*x**b
+            popts_gain, _ = curve_fit(gain_curve,setvs,gains)
+            x_range = np.linspace(setvs[0],setvs[-1],1000)
+            fit_gain = gain_curve(x_range,*popts_gain)
+            plt.plot(x_range,fit_gain,color='blue')
+            subt_fit_gain = fit_gain - 1e7
+            hv_at_1e7 = (x_range[subt_fit_gain>0])[0]
+            print(hv_at_1e7)
         plt.xlim(1000,2000)
         plt.xlabel('Voltage [V]')
         plt.ylabel('Gain')
@@ -240,6 +252,92 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
         pdf.savefig()
         plt.clf()
 
+@cli.command()
+@click.option('--filepath',type=str,required=True)
+@click.option('--thzero',type=float,default=0.32)
+@click.option('--startv',type=int,default=1300)
+@click.option('--steps',type=int,default=250)
+@click.option('--channel',type=int,default=0)
+def gainplot(filepath,thzero,startv,steps,channel):
+    gain_estimate(filepath,thzero,startv,steps,channel)
+
+def gain_estimate(filepath,thzero,startv,steps,channel=0,qmax=None):
+    tablepath = f'{filepath}/raw/data_ch{channel}.hdf'
+
+    with tables.open_file(tablepath) as f:
+        data = f.get_node('/data')
+        charges = data.col('charge')
+        setvs = data.col('setv')
+        hvvs = data.col('hvv')
+        pctimes = data.col('pctime')
+
+    popts = []
+    popts0 = []
+    th0 = thzero
+    pedmin = -0.35
+    pedth = 0.1
+
+    for charge, setv in zip(charges, setvs):
+        threshold = th0+((setv-startv)/steps)**2 if setv > startv else th0
+        (hist_, bins_, _) = plt.hist(charge, bins=1600,range=(-2,30), histtype='step')
+        bin_center_ = np.array([(bins_[i]+bins_[i+1])/2 for i in range(len(bins_)-1)])
+
+        #ped fitting
+        try:
+            popt0, pcov0 = curve_fit(gaus, bin_center_[(bin_center_<pedth) * (bin_center_>pedmin)], hist_[(bin_center_<pedth)*(bin_center_>pedmin)])
+        except:
+            popt0 = [0,0,0]
+        popts0.append(popt0)
+
+        #spe fitting
+        subt_ped_ = hist_ - gaus(bin_center_,*popt0)
+        if popt0[1]+4*popt0[2] > threshold:
+            threshold = popt0[1] + 4*popt0[2]
+        try:
+            popt, pcov = curve_fit(gaus, bin_center_[bin_center_>threshold], subt_ped_[bin_center_>threshold])
+        except:
+            try: 
+                popt, pcov = curve_fit(gaus, bin_center_, subt_ped_)
+            except:
+                popt = [0,0,0]
+        popts.append(popt)
+
+    epC = 1.60217663e-7
+    gains = [(popt[1]-popt0[1])/epC for popt,popt0 in zip(popts,popts0)]
+
+    gain_dict = {}
+    time_dict = {}
+    obsv_dict = {}
+    for i, setv in enumerate(setvs):
+        gain = gains[i]
+        gain_dict.setdefault(str(setv),[])
+        gain_dict[str(setv)].append(gain)
+
+        time_dict.setdefault(str(setv),[])
+        time_dict[str(setv)].append(datetime.datetime.fromtimestamp(int(pctimes[i])))
+
+        obsv_dict.setdefault(str(setv),[])
+        obsv_dict[str(setv)].append(np.mean(hvvs[i]))
+
+    #print(gain_dict, time_dict, obsv_dict)
+
+    pdf = PdfPages(f'{filepath}/gain_timedep_{channel}.pdf')
+    for key in gain_dict:
+        fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()
+        ax1.plot(time_dict[key], gain_dict[key], label='gain',color='tab:blue')
+        ax2.plot(time_dict[key], obsv_dict[key], label='obs hv',color='tab:orange')
+        plt.title(f'Gain for {key} V')
+        handler1, label1 = ax1.get_legend_handles_labels()
+        handler2, label2 = ax2.get_legend_handles_labels()
+        ax1.legend(handler1+handler2, label1+label2)
+        meangain = np.mean(np.array(gain_dict[key]))
+        meanhv = np.mean(np.array(obsv_dict[key]))
+        ax1.set_ylim(0.8*meangain,1.2*meangain)
+        ax2.set_ylim(meanhv-50, meanhv+50)
+        pdf.savefig()
+        plt.clf()
+    pdf.close()
 
 if __name__ == '__main__':
     cli()
