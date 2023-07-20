@@ -62,16 +62,19 @@ def chargestamp_multiple(parser, path, channel=None, doAnalysis=False, fillzero=
         print("Done")
         time.sleep(1)
 
+    if len(options.dacSettings) == 0:
+        session.setDAC('A', 30000)
+        session.setDAC('B', 30000)
+        time.sleep(1)
+
     if options.led:
         if not session.readLIDInterlock():
             os.system('python3 ../fh_icm_api/lid_enable.py')
+        session.setDEggConstReadout(channel, 1, 256)
         session.setDEggExtTrigSourceICM()
         session.startDEggExternalTrigStream(channel)
+        #session.startDEggExternalHBufTrigStream()
     else:
-        if len(options.dacSettings) == 0:
-            session.setDAC('A', 30000)
-            session.setDAC('B', 30000)
-            time.sleep(1)
         threshold = waveform.get_baseline(session, options, path, channel=channel) + 9
         print(f'Threshold for channel {channel}: {threshold}')
         session.startDEggThreshTrigStream(channel,threshold)
@@ -97,10 +100,10 @@ def chargestamp_multiple(parser, path, channel=None, doAnalysis=False, fillzero=
         led_off(session, options.led)
         #print(f'Set voltage: {setv} V')
         session.setDEggHV(channel,int(setv))
+        led_on(session, options.freq, led_intensity, setLEDon(1,False), options.led)
         for j in (pbar := tqdm(range(int(abs(setv-prev_setv)/50+1)*2),leave=False)):
             pbar.set_description(f"Waiting for setv {setv} V")
             time.sleep(0.5)
-        led_on(session, options.freq, led_intensity, setLEDon(1,False), options.led)
         try:
             datadic = charge_readout(session, options, channel, int(setv), hdfout, fillzero=fillzero, nevents=nevents, debug=debug, fillnan=fillnan)
         except:
@@ -131,9 +134,9 @@ def chargestamp_multiple(parser, path, channel=None, doAnalysis=False, fillzero=
 
     return path
 
-def led_on(session, freq, bias, ledsel, ledon):
+def led_on(session, freq, bias, ledsel, ledon, debug=False):
     if ledon:
-        doLEDflashing(session, freq, bias, ledsel)
+        doLEDflashing(session, freq, bias, ledsel, debug=debug)
         time.sleep(1)
 
 def led_off(session, ledon):
@@ -155,7 +158,7 @@ def charge_readout(session, options, channel, setHV, filename, fillzero=False, n
         nevents = int(nevents)
 
     if options.led:
-        block = session.DEggReadChargeBlockFixed(140,155,16*nevents,timeout=options.timeout)
+        block = session.DEggReadChargeBlockFixed(140,155,14*nevents,timeout=options.timeout)
     else: 
         try:
             block = session.DEggReadChargeBlock(10,15,14*nevents,timeout=options.timeout)

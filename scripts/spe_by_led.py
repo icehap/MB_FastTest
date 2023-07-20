@@ -52,18 +52,19 @@ def main():
 
     do_led_scan = [options.ledfor0, options.ledfor1]
 
+    target_intensity = [0.15,0.2]
     for ch in range(2):
         if do_led_scan[ch] is None:
             qmeans = led_scan(parser,path,ch,led_setting=led_int_1, debug=options.debug, basehv=basehv[ch])
             print(qmeans)
             for i, qmean in enumerate(qmeans):
-                if qmean > 0.1:
+                if qmean > target_intensity[ch]:
                     break
             if i!=0:
                 led_int_2 = [led_int_1[i-1] + 256*j for j in range(9)]
                 qmeans_2 = led_scan(parser,path,ch,led_setting=led_int_2,debug=options.debug, basehv=basehv[ch])
                 for j, qmean_2 in enumerate(qmeans_2):
-                   if qmean_2 > 0.1:
+                   if qmean_2 > target_intensity[ch]:
                        break
             else:
                 led_int_2 = led_int_1
@@ -105,10 +106,17 @@ def chargestamp_led(parser, path, channel=None, doAnalysis=False, fillzero=False
         print("Done")
         time.sleep(1)
 
+    if len(options.dacSettings) == 0:
+        session.setDAC('A', 30000)
+        session.setDAC('B', 30000)
+        time.sleep(1)
+
     if not session.readLIDInterlock():
         os.system('python3 ../fh_icm_api/lid_enable.py')
+    session.setDEggConstReadout(channel, 1, 256)
     session.setDEggExtTrigSourceICM()
     session.startDEggExternalTrigStream(channel)
+    #session.startDEggExternalHBufTrigStream(channel)
 
     time.sleep(1)
     session.enableHV(channel)
@@ -126,6 +134,53 @@ def chargestamp_led(parser, path, channel=None, doAnalysis=False, fillzero=False
     for j in (pbar := tqdm(range(int(abs(setv-prev_setv)/50+1)*2),leave=False)):
         pbar.set_description(f"Waiting for setv {setv} V")
         time.sleep(0.5)
+    obs_qmean = []
+    for i in tqdm(range(len(led_intensities)),desc='LED scan'):
+        time.sleep(2)
+        led_intensity = led_intensities[i]
+        hdfout = f'{path}/raw/data_ch{channel}_{led_intensity}.hdf'
+        led_off(session, options.led)
+        time.sleep(1)
+        #print(f'Set voltage: {setv} V')
+        led_on(session, options.freq, led_intensity, setLEDon(1,False), options.led)
+        time.sleep(1)
+        try:
+            datadic = charge_readout(session, options, channel, int(setv), hdfout, fillzero=fillzero, nevents=nevents, debug=debug, fillnan=True)
+        except:
+            traceback.print_exc()
+            session.close()
+            time.sleep(1)
+            session = startIcebootSession(parser)
+            time.sleep(1)
+            session.enableHV(channel)
+            continue
+        simple_plot_qhist(pdf, datadic, title=f'LED: {hex(led_intensity)}, SetV: {setv} V')
+        qs = np.array(datadic['charge'])
+        this_qmean = np.mean(qs[qs>-10])
+        obs_qmean.append(this_qmean)
+        prev_setv = setv
+        if this_qmean > 10:
+            print('exceeds 10 p.e. no need to take data above')
+            break
+
+    led_off(session, options.led)
+    session.endStream()
+    session.disableHV(channel)
+    session.close()
+    pdf.close()
+
+    if doAnalysis:
+        from analysis.qstamp_analyze import plot_scaled_charge_histogram_wrapper
+        ana = plot_scaled_charge_histogram_wrapper(filepath=path,thzero=0.32,startv=1300,steps=250,channel=channel,do_fit_gain=options.gainfit)
+
+    return obs_qmean
+
+def LED_scaning(session, options, setv, led_intensities, channel, hvskip=False):
+    if not hvskip:
+        session.setDEggHV(channel,int(setv))
+        for j in (pbar := tqdm(range(int(abs(setv-prev_setv)/50+1)*2),leave=False)):
+            pbar.set_description(f"Waiting for setv {setv} V")
+            time.sleep(0.5)
     obs_qmean = []
     for i in tqdm(range(len(led_intensities)),desc='LED scan'):
         time.sleep(2)
@@ -150,19 +205,8 @@ def chargestamp_led(parser, path, channel=None, doAnalysis=False, fillzero=False
         obs_qmean.append(this_qmean)
         prev_setv = setv
         if this_qmean > 10:
-            print('exceeds 10 p.e. no need to take data anymore')
+            print('exceeds 10 p.e. no need to take data above')
             break
-
-    led_off(session, options.led)
-    session.endStream()
-    session.disableHV(channel)
-    session.close()
-    pdf.close()
-
-    if doAnalysis:
-        from analysis.qstamp_analyze import plot_scaled_charge_histogram_wrapper
-        ana = plot_scaled_charge_histogram_wrapper(filepath=path,thzero=0.32,startv=1300,steps=250,channel=channel,do_fit_gain=options.gainfit)
-
     return obs_qmean
 
 if __name__ == '__main__':

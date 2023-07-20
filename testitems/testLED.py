@@ -7,14 +7,18 @@ import matplotlib.pyplot as plt
 from mkplot import plotSetting
 import signal
 
-def doLEDflashing(session, freq=5000, bias=0x6000, flashermask=0xFFFF):
-    #print('Now preparing for LED...')
+def doLEDflashing(session, freq=5000, bias=0x6000, flashermask=0xFFFF,debug=False):
+    if debug:
+        print('Now preparing for LED...')
     session.enableCalibrationPower()
     session.setCalibrationSlavePowerMask(2)
     #session.enableCalibrationTrigger(1000)
-    #print('Now flashing LED...')
+    if debug:
+        print('Now flashing LED...')
     session.icmStartCalTrig(0,freq) # Unit 1: 17.06667[usec] 
-    #session.setFlasherBias(0x5310)
+    if debug:
+        print(f'freq: {freq}')
+    session.setFlasherBias(0x5310)
     session.setFlasherBias(bias)
     session.setFlasherMask(flashermask)
 
@@ -68,25 +72,37 @@ def main(parser):
     plt.ylabel("ADC Count")
     line = None
 
-    doLEDflashing(session,freq=options.freq,bias=options.intensity,flashermask=setLEDon(options.flashermask))
 
     # Number of samples must be divisible by 4
-    nSamples = (int(options.samples) / 4) * 4
+    nSamples = int((int(options.samples) / 4) * 4)
     if (nSamples < 16):
         print("Number of samples must be at least 16")
         sys.exit(1)
+
+    session.setDEggConstReadout(int(options.channel), 1, int(nSamples))
     
     if options.hvv is not None:
         session.enableHV(int(options.channel))
         session.setDEggHV(int(options.channel),int(options.hvv))
         print('HV ramping... ')
-        time.sleep(60)
+        from tqdm import tqdm
+        for x in tqdm(range(int(int(options.hvv)/50+10))):
+            time.sleep(1)
         print(f'Done. Observed HV is {session.readSloADC_HVS_Voltage(int(options.channel))} V.')
     
-    session.setDEggConstReadout(int(options.channel), 1, int(nSamples))
-
     session.setDEggExtTrigSourceICM()
-    session.startDEggExternalTrigStream(int(options.channel))
+    if options.hbuf:
+        print('Hit Buffer External Trigger Stream...')
+        session.startDEggExternalHBufTrigStream(int(options.channel))
+    else:
+        print('Standard External Trigger Stream...')
+        session.startDEggExternalTrigStream(int(options.channel))
+
+    doLEDflashing(session,freq=options.freq,bias=options.intensity,flashermask=setLEDon(options.flashermask),debug=options.debug)
+
+    index = 0
+    xdata = np.arange(int(nSamples))
+    sumwf = np.zeros(int(nSamples))
 
     # define signal handler to end the stream on CTRL-C
     def signal_handler(*args):
@@ -96,12 +112,14 @@ def main(parser):
         print('Done')
         session.setDEggHV(int(options.channel), 0)
         session.disableHV(int(options.channel))
+        avgwf = sumwf / (index +1)
+        plt.plot(xdata,avgwf)
+        plt.savefig('avgwf.pdf')
         sys.exit(0)
     signal.signal(signal.SIGINT, signal_handler)
 
-    index = 0
     while (True):
-
+        index = index + 1
         try:
             readout = parseTestWaveform(session.readWFMFromStream())
         except IOError:
@@ -111,14 +129,17 @@ def main(parser):
 
         # Check for timeout
         if readout is None:
+            print('readout is none')
             continue
         if options.bsub:
             applyPatternSubtraction(readout)
         wf = readout["waveform"]
+        sumwf += np.array(wf)
         # Fix for 0x6a firmware
-        if len(wf) != nSamples:
+        if len(wf) != int(nSamples):
+            print(f'#sample is wrong : {len(wf)}, {nSamples}')
+            time.sleep(0.1)
             continue
-        xdata = [x for x in range(len(wf))]
         if not line:
             line, = ax.plot(xdata, wf, 'r-')
         else:
@@ -134,7 +155,7 @@ def main(parser):
         fig.canvas.flush_events()
         #plt.savefig(f'save/fig{index}.png',format='png',dpi=300)
         plt.pause(0.001)
-        index = index + 1
+        print(f'\r{index}',end='')
 
     session.setDEggHV(int(options.channel), 0)
     session.disableHV(int(options.channel))

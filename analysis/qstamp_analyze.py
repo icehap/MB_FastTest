@@ -308,6 +308,7 @@ def gain_estimate(filepath,thzero,startv,steps,channel=0,qmax=None):
     gain_dict = {}
     time_dict = {}
     obsv_dict = {}
+    obsv_sigma_dict = {}
     for i, setv in enumerate(setvs):
         gain = gains[i]
         gain_dict.setdefault(str(setv),[])
@@ -319,7 +320,11 @@ def gain_estimate(filepath,thzero,startv,steps,channel=0,qmax=None):
         obsv_dict.setdefault(str(setv),[])
         obsv_dict[str(setv)].append(np.mean(hvvs[i]))
 
+        obsv_sigma_dict.setdefault(str(setv),[])
+        obsv_sigma_dict[str(setv)].append(np.std(hvvs[i]))
+
     #print(gain_dict, time_dict, obsv_dict)
+    print(obsv_sigma_dict)
 
     pdf = PdfPages(f'{filepath}/gain_timedep_{channel}.pdf')
     for key in gain_dict:
@@ -327,6 +332,7 @@ def gain_estimate(filepath,thzero,startv,steps,channel=0,qmax=None):
         ax2 = ax1.twinx()
         ax1.plot(time_dict[key], gain_dict[key], label='gain',color='tab:blue')
         ax2.plot(time_dict[key], obsv_dict[key], label='obs hv',color='tab:orange')
+        ax2.fill_between(time_dict[key],np.array(obsv_dict[key])-np.array(obsv_sigma_dict[key]),np.array(obsv_dict[key])+np.array(obsv_sigma_dict[key]),color="tab:orange",alpha=0.5)
         plt.title(f'Gain for {key} V')
         handler1, label1 = ax1.get_legend_handles_labels()
         handler2, label2 = ax2.get_legend_handles_labels()
