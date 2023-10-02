@@ -21,3 +21,4 @@ def Waveform(parser):
     parser.add_option('--nevents',help='#wfs',type='int',default=10)
     parser.add_option('--timeout',help='Timeout',type='int', default=10)
     parser.add_option('--samples',help='#samples',type='int',default=256)
+    parser.add_option('--hbuf',help='Enable Hit buffer',action='store_true',default=False)

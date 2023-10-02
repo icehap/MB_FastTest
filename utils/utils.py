@@ -37,8 +37,8 @@ def pathSetting(options, measname, mon=False, dedicated=None):
     print(f'=== File path is: {path} ===')
     os.system(f'mkdir -p {path}')
     with open(f'{path}/log.txt','a') as f:
-        f.write(f'Run date: {datetime.datetime.now()}')
-        f.write(f'{options}')
+        f.write(f'Run date: {datetime.datetime.now()}\n')
+        f.write(f'{options}\n')
 
     return path
 
@@ -66,6 +66,15 @@ def flashFPGA(session,prefer=None):
         time.sleep(1)
         return 0
 
+def icm_firmware_verify(parser):
+    from icmnet import ICMNet
+    (options, args) = parser.parse_args()
+    icms = ICMNet(6000,host='localhost') # only one wp connection supported currently
+    dev = int(options.port) - 5000 # 
+    reply = icms.request("read %d %s" % (dev, 'FW_VERS'))
+    print(reply['value'])
+    pass
+
 def plot_setting(parser):
     (options, args) = parser.parse_args()
     if options.g:
@@ -76,3 +85,4 @@ def plot_setting(parser):
         print('engine pdf')
         import matplotlib as mpl
         mpl.use('PDF')
+

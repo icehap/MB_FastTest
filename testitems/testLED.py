@@ -12,10 +12,11 @@ def doLEDflashing(session, freq=5000, bias=0x6000, flashermask=0xFFFF,debug=Fals
         print('Now preparing for LED...')
     session.enableCalibrationPower()
     session.setCalibrationSlavePowerMask(2)
-    #session.enableCalibrationTrigger(1000)
+    session.enableCalibrationTrigger(freq)
     if debug:
         print('Now flashing LED...')
-    session.icmStartCalTrig(0,freq) # Unit 1: 17.06667[usec] 
+    #session.icmStartCalTrig(0,freq) # Unit 1: 17.06667[usec] 
+    session.icmStartCalTrig()
     if debug:
         print(f'freq: {freq}')
     session.setFlasherBias(0x5310)
@@ -64,15 +65,6 @@ def main(parser):
     
     session = startIcebootSession(parser)
 
-    plt.ion()
-    plt.show()
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    plt.xlabel("Waveform Bin")
-    plt.ylabel("ADC Count")
-    line = None
-
-
     # Number of samples must be divisible by 4
     nSamples = int((int(options.samples) / 4) * 4)
     if (nSamples < 16):
@@ -80,17 +72,28 @@ def main(parser):
         sys.exit(1)
 
     session.setDEggConstReadout(int(options.channel), 1, int(nSamples))
+
+    plt.ion()
+    plt.show()
+    fig = plt.figure(figsize=(6.4*(nSamples/256),4.8))
+    ax = fig.add_subplot(111)
+    plt.xlabel("Waveform Bin")
+    plt.ylabel("ADC Count")
+    line = None
+
+
     
     if options.hvv is not None:
         session.enableHV(int(options.channel))
         session.setDEggHV(int(options.channel),int(options.hvv))
         print('HV ramping... ')
         from tqdm import tqdm
-        for x in tqdm(range(int(int(options.hvv)/50+10))):
+        for x in tqdm(range(int(int(options.hvv)/50+1))):
             time.sleep(1)
         print(f'Done. Observed HV is {session.readSloADC_HVS_Voltage(int(options.channel))} V.')
     
     session.setDEggExtTrigSourceICM()
+
     if options.hbuf:
         print('Hit Buffer External Trigger Stream...')
         session.startDEggExternalHBufTrigStream(int(options.channel))
@@ -112,7 +115,8 @@ def main(parser):
         print('Done')
         session.setDEggHV(int(options.channel), 0)
         session.disableHV(int(options.channel))
-        avgwf = sumwf / (index +1)
+        avgwf = sumwf / index
+        plt.clf()
         plt.plot(xdata,avgwf)
         plt.savefig('avgwf.pdf')
         sys.exit(0)

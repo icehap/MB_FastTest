@@ -15,7 +15,7 @@ import traceback
 
 def main():
     print(datetime.datetime.now())
-    led_int_1 = [int(0x4800) + 2048*i for i in range(6)]
+    led_int_1 = [int(0x4800) + 2048*i for i in range(8)]
     start_time = time.time()
 
     parser = getParser()
@@ -24,25 +24,30 @@ def main():
     shared_options.Waveform(parser)
     parser.add_option('--deggnum', type=str, default='None')
     parser.add_option('--nevts',default=None)
-    parser.add_option('--qmax',default=None)
+    parser.add_option('--qmax',type=int,default=16)
     parser.add_option('--basehv0',default=None)
     parser.add_option('--basehv1',default=None)
     parser.add_option('--startv',type=int,default=1300)
     parser.add_option('--ledfor0',default=None)
     parser.add_option('--ledfor1',default=None)
     parser.add_option('--gainfit',action='store_true',default=False)
+    parser.add_option('--qmeantarget',default=None)
+    parser.add_option('--half',default=None)
     (options,args) = parser.parse_args()
+    #print(options,args)
     path = utils.pathSetting(options, 'SPELED', dedicated=f'{options.deggnum}')
 
     if options.hvv is None:
-        hvv = '1300,1400,1500,1600,1700,1800,1900,1950'
+        #hvv = '1300,1400,1500,1600,1700,1800,1900,1950' ## old setting
+        hvv = '1300,1500,1700,1900,1950'
     else:
         hvv = options.hvv
 
     if options.nevts is not None:
         nevents = float(options.nevts)
     else:
-        nevents = 5e4
+        #nevents = 5e4 ## old setting
+        nevents = 3e4
 
     basehv = [1500,1500]
     if options.basehv0 is not None:
@@ -52,8 +57,14 @@ def main():
 
     do_led_scan = [options.ledfor0, options.ledfor1]
 
-    target_intensity = [0.15,0.2]
-    for ch in range(2):
+    target_intensity = [0.16,0.16] # 0.1 p.e.
+    if options.qmeantarget is not None:
+        target_intensity = [float(options.qmeantarget), float(options.qmeantarget)]
+        
+    channels = [0,1] 
+    if options.half is not None:
+        channels = [int(options.half)]
+    for ch in channels:
         if do_led_scan[ch] is None:
             qmeans = led_scan(parser,path,ch,led_setting=led_int_1, debug=options.debug, basehv=basehv[ch])
             print(qmeans)
@@ -76,7 +87,7 @@ def main():
         print(f'LED intensity: {hex(this_intensity)}')
         with open(f'{path}/log.txt','a') as f:
             f.write(f'\nLED intensity for channel {ch}: {hex(this_intensity)}')
-        chargestamp_multiple(parser,path,ch,doAnalysis=True,fillzero=True,hvset=hvv,nevents=nevents,led_intensity=this_intensity,debug=options.debug,fillnan=True,analysis_startv=options.startv)
+        chargestamp_multiple(parser,path,ch,doAnalysis=True,fillzero=True,hvset=hvv,nevents=nevents,led_intensity=this_intensity,debug=options.debug,fillnan=True,analysis_startv=options.startv,prefat=True)
 
     end_time = time.time()
     print(f'Duration: {end_time - start_time:.1f} sec')
@@ -97,7 +108,7 @@ def chargestamp_led(parser, path, channel=None, doAnalysis=False, fillzero=False
     if channel is None:
         channel = int(options.channel)
 
-    session = startIcebootSession(parser)
+    session = startIcebootSession(parser,host='localhost',port=5002)
     while session.fpgaVersion()==65535:
         utils.flashFPGA(session)
     if not session.readHVInterlock():
@@ -115,8 +126,11 @@ def chargestamp_led(parser, path, channel=None, doAnalysis=False, fillzero=False
         os.system('python3 ../fh_icm_api/lid_enable.py')
     session.setDEggConstReadout(channel, 1, 256)
     session.setDEggExtTrigSourceICM()
-    session.startDEggExternalTrigStream(channel)
-    #session.startDEggExternalHBufTrigStream(channel)
+    if options.hbuf:
+        session.startDEggExternalHBufTrigStream(channel)
+    else:
+        session.startDEggExternalTrigStream(channel)
+    session.disableDEggTriggers(1-channel)
 
     time.sleep(1)
     session.enableHV(channel)
@@ -139,18 +153,18 @@ def chargestamp_led(parser, path, channel=None, doAnalysis=False, fillzero=False
         time.sleep(2)
         led_intensity = led_intensities[i]
         hdfout = f'{path}/raw/data_ch{channel}_{led_intensity}.hdf'
-        led_off(session, options.led)
+        led_off(session, True)
         time.sleep(1)
         #print(f'Set voltage: {setv} V')
-        led_on(session, options.freq, led_intensity, setLEDon(1,False), options.led)
+        led_on(session, options.freq, led_intensity, setLEDon(1,False), True)
         time.sleep(1)
         try:
-            datadic = charge_readout(session, options, channel, int(setv), hdfout, fillzero=fillzero, nevents=nevents, debug=debug, fillnan=True)
+            datadic = charge_readout(session, options, channel, int(setv), hdfout, fillzero=fillzero, nevents=nevents, debug=debug, fillnan=True, prefat=True)
         except:
             traceback.print_exc()
             session.close()
             time.sleep(1)
-            session = startIcebootSession(parser)
+            session = startIcebootSession(parser,host='localhost',port=5002)
             time.sleep(1)
             session.enableHV(channel)
             continue
@@ -159,11 +173,11 @@ def chargestamp_led(parser, path, channel=None, doAnalysis=False, fillzero=False
         this_qmean = np.mean(qs[qs>-10])
         obs_qmean.append(this_qmean)
         prev_setv = setv
-        if this_qmean > 10:
-            print('exceeds 10 p.e. no need to take data above')
+        if this_qmean > 16:
+            print('exceeds 10 p.e. (assumed 1e7 gain) no need to take data above')
             break
 
-    led_off(session, options.led)
+    led_off(session, True)
     session.endStream()
     session.disableHV(channel)
     session.close()
@@ -186,11 +200,11 @@ def LED_scaning(session, options, setv, led_intensities, channel, hvskip=False):
         time.sleep(2)
         led_intensity = led_intensities[i]
         hdfout = f'{path}/raw/data_ch{channel}_{led_intensity}.hdf'
-        led_off(session, options.led)
+        led_off(session, True)
         #print(f'Set voltage: {setv} V')
-        led_on(session, options.freq, led_intensity, setLEDon(1,False), options.led)
+        led_on(session, options.freq, led_intensity, setLEDon(1,False), True)
         try:
-            datadic = charge_readout(session, options, channel, int(setv), hdfout, fillzero=fillzero, nevents=nevents, debug=debug, fillnan=True)
+            datadic = charge_readout(session, options, channel, int(setv), hdfout, fillzero=fillzero, nevents=nevents, debug=debug, fillnan=True, prefat=True)
         except:
             traceback.print_exc()
             session.close()
