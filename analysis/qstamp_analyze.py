@@ -42,10 +42,15 @@ def plot_charge_histogram(filepath):
 @click.option('--thzero',type=float,default=0.32)
 @click.option('--startv',type=int,default=1300)
 @click.option('--steps',type=int,default=250)
-def plot_scaled_charge_histogram(filepath,thzero,startv,steps):
-    plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps)
+@click.option('--gainfit',is_flag=True,default=False)
+@click.option('--channel',type=int,default=None)
+@click.option('--qmax',default=None)
+@click.option('--bestscale',is_flag=True,default=False)
+@click.option('--linear',is_flag=True,default=False)
+def plot_scaled_charge_histogram(filepath,thzero,startv,steps,gainfit,qmax,channel,bestscale,linear):
+    plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=channel,qmax=qmax,do_gain_fit=gainfit,offline=True,bestScale=bestscale,lingood=linear)
 
-def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=None,qmax=None,do_gain_fit=False):
+def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=None,qmax=None,do_gain_fit=False,offline=False,bestScale=False,lingood=False):
     with open(f'{filepath}/fit_config.txt','a') as f:
         f.write(f'channel: {channel}\n')
         f.write(f'th0: {thzero}\nstartv: {startv}\nsteps: {steps}\n')
@@ -61,6 +66,10 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
         hvvs = data.col('hvv')
         hvis = data.col('hvi')
 
+    charge_analyze(charges=charges,setvs=setvs,hvvs=hvvs,hvis=hvis,filepath=filepath,thzero=thzero,startv=startv,steps=steps,channel=channel,qmax=qmax,do_gain_fit=do_gain_fit,offline=offline,bestScale=bestScale,lingood=lingood)
+
+def charge_analyze(charges,setvs,hvvs,hvis,filepath,thzero,startv,steps,channel=None,qmax=None,do_gain_fit=False,cr_xaxis=None,out=None,lingood=False,offline=False,bestScale=False,fixedfitrange=None):
+
     popts = []
     popts0 = []
     th0 = thzero
@@ -69,13 +78,29 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
     pedmin = -0.35
     pedth = 0.1
     
-    postfix = '' if channel is None else f'_ch{channel}'
-    pdf = PdfPages(f'{filepath}/charge_histogram_fit{postfix}.pdf')
-    linearPdf = PdfPages(f'{filepath}/Linear_charge_histogram_fit{postfix}.pdf')
+    suffix = '' if channel is None else f'_ch{channel}'
+    if out is not None:
+        suffix += f'_{out}'
+    if offline:
+        suffix += '_offline'
+    pdf = PdfPages(f'{filepath}/charge_histogram_fit{suffix}.pdf')
+    linearPdf = PdfPages(f'{filepath}/Linear_charge_histogram_fit{suffix}.pdf')
     if qmax is not None:
         binmax = float(qmax)
     else:
         binmax = 10
+
+    if lingood:
+        lingood_ymax_ = []
+        for charge, setv in zip(charges, setvs):
+            threshold = th0+((setv-startv)/steps)**2 if setv > startv else th0
+            (hist_, bins_, _) = plt.hist(charge, bins=1600, range=(-2,30), histtype='step')
+            bin_center_ = np.array([(bins_[i]+bins_[i+1])/2 for i in range(len(bins_)-1)])
+            lingood_ymax_.append(np.max(hist_[bin_center_>threshold]))
+            plt.clf()
+        lingood_ymax = int(np.max(lingood_ymax_) * 1.2 / 10) * 10
+        lingoodpdf = PdfPages(f'{filepath}/lin_charge_histogram_fit{suffix}.pdf') 
+
 
     for charge, setv in zip(charges, setvs):
         threshold = th0+((setv-startv)/steps)**2 if setv > startv else th0
@@ -107,8 +132,19 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
         #plt.axvline(threshold,linestyle=':',linewidth=1,color='green')
         if popt0[1]+4*popt0[2] > threshold:
             threshold = popt0[1] + 4*popt0[2]
+        spe_fit_range = (bin_center_>threshold) 
+        if cr_xaxis is not None:
+            spe_fit_range *= (bin_center_<3)
+        if fixedfitrange is not None:
+            fix_x = str(fixedfitrange).split(',')
+            if len(fix_x) == 2:
+                try:
+                    spe_fit_range = (bin_center_ > float(fix_x[0])) * (bin_center_ < float(fix_x[1]))
+                except:
+                    print(f'WARNING: Something wrong with the fixed fit range setting.')
+                    pass
         try: 
-            popt, pcov = curve_fit(gaus, bin_center_[bin_center_>threshold], subt_ped_[bin_center_>threshold])
+            popt, pcov = curve_fit(gaus, bin_center_[spe_fit_range], subt_ped_[spe_fit_range])
         except: 
             try:
                 popt, pcov = curve_fit(gaus, bin_center_, subt_ped_)
@@ -128,12 +164,22 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
         plt.ylim(0.5,np.exp(np.log(np.max(hist_))*1.2))
         plt.yscale('log')
         pdf.savefig()
+
+        if lingood:
+            plt.yscale('linear')
+            plt.xlim(-2,6)
+            plt.ylim(0,lingood_ymax)
+            lingoodpdf.savefig()
+
         plt.clf()
+
         popts.append(popt)
         popts0.append(popt0)
 
     pdf.close()
     linearPdf.close()
+    if lingood:
+        lingoodpdf.close()
 
     '''
     with PdfPages(f'{filepath}/charge_histogram_scaled{postfix}.pdf') as pdf:
@@ -168,24 +214,31 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
             plt.clf()
     '''
 
-    with PdfPages(f'{filepath}/analysis_results{postfix}.pdf') as pdf:
+    xdata = setvs if cr_xaxis is None else cr_xaxis
+    vol_label = 'Set Voltage [V]' if cr_xaxis is None else 'Fluctuation Half-Width [V]'
+    with PdfPages(f'{filepath}/analysis_results{suffix}.pdf') as pdf:
         epC = 1.60217663e-7
-        gains = [(popt[1]-popt0[1])/epC for popt,popt0 in zip(popts,popts0)]
-        plt.plot(setvs,gains,label='Set voltage',marker='o')
-        mean_hvs = [np.mean(hvv) for hvv in hvvs]
-        plt.plot(mean_hvs,gains,label='Obs voltage',marker='o')
-        if do_gain_fit:
-            def gain_curve(x,a,b):
-                return a*x**b
-            popts_gain, _ = curve_fit(gain_curve,setvs,gains)
-            x_range = np.linspace(setvs[0],setvs[-1],1000)
-            fit_gain = gain_curve(x_range,*popts_gain)
-            plt.plot(x_range,fit_gain,color='blue')
-            subt_fit_gain = fit_gain - 1e7
-            hv_at_1e7 = (x_range[subt_fit_gain>0])[0]
-            print(hv_at_1e7)
-        plt.xlim(1000,2000)
-        plt.xlabel('Voltage [V]')
+        gains = [(popt[1]-popt0[1])/epC if popt[0] > 0 else np.nan for popt,popt0 in zip(popts,popts0)]
+        if cr_xaxis is None:
+            plt.plot(setvs,gains,label='Set voltage',marker='o')
+            mean_hvs = [np.mean(hvv) for hvv in hvvs]
+            plt.plot(mean_hvs,gains,label='Obs voltage',marker='o')
+            if do_gain_fit:
+                def gain_curve(x,a,b):
+                    return a*x**b
+                popts_gain, _ = curve_fit(gain_curve,setvs,gains)
+                x_range = np.linspace(setvs[0],setvs[-1],1000)
+                fit_gain = gain_curve(x_range,*popts_gain)
+                plt.plot(x_range,fit_gain,color='blue')
+                subt_fit_gain = fit_gain - 1e7
+                hv_at_1e7 = (x_range[subt_fit_gain>0])[0]
+                print(hv_at_1e7)
+            if not bestScale:
+                plt.xlim(1000,2000)
+            plt.xlabel('Voltage [V]')
+        else:
+            plt.plot(xdata,gains,marker='o',markersize=1)
+            plt.xlabel('Fluctuation Half-Width [V]')
         plt.ylabel('Gain')
         plt.grid(color='gray',linestyle=':',linewidth=1)
         plt.legend()
@@ -199,9 +252,13 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
         ax1 = fig.add_subplot(111)
         ax2 = ax1.twinx()
 
-        ax1.plot(setvs,setvs,color='gray',ls='--',linewidth=1)
-        ax1.errorbar(setvs,[np.mean(hvv) for hvv in hvvs],yerr=[np.std(hvv) for hvv in hvvs],label='Voltage',color='tab:blue')
-        ax2.errorbar(setvs,[np.mean(hvi) for hvi in hvis],yerr=[np.std(hvi) for hvi in hvis],label='Current',color='tab:orange')
+        if cr_xaxis is None:
+            ax1.plot(setvs,setvs,color='gray',ls='--',linewidth=1)
+            ax1.errorbar(xdata,[np.mean(hvv) for hvv in hvvs],yerr=[np.std(hvv) for hvv in hvvs],label='Voltage',color='tab:blue')
+            ax2.errorbar(xdata,[np.mean(hvi) for hvi in hvis],yerr=[np.std(hvi) for hvi in hvis],label='Current',color='tab:orange')
+        else:
+            ax1.errorbar(xdata,[hvv[0] for hvv in hvvs],yerr=[np.sqrt(hvv[1]) for hvv in hvvs],label='Voltage',color='tab:blue')
+            ax2.errorbar(xdata,[hvi[0] for hvi in hvis],yerr=[np.sqrt(hvi[1]) for hvi in hvis],label='Current',color='tab:orange')
         ax1.set_xlabel('Set Voltage [V]')
         ax1.set_ylabel('Obs Voltage [V]')
         ax2.set_ylabel('Obs Current [$\mu$A]')
@@ -217,10 +274,10 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
         plt.clf()
 
         try:
-            plt.plot(setvs,[np.sqrt((popt[2]/popt[1])**2-(popt0[2]/popt[1])**2) for popt,popt0 in zip(popts,popts0)],marker='o')
+            plt.plot(xdata,[np.sqrt((popt[2]/popt[1])**2-(popt0[2]/popt[1])**2) if popt[0] > 0 else np.nan for popt,popt0 in zip(popts,popts0)],marker='o',markersize=1)
         except:
             pass
-        plt.xlabel('Set Voltage [V]')
+        plt.xlabel(vol_label)
         plt.ylabel('Charge Resolution [p.e.]')
         plt.ylim(0,1.6)
         plt.grid(color='gray',linestyle=':',linewidth=1)
@@ -228,16 +285,16 @@ def plot_scaled_charge_histogram_wrapper(filepath,thzero,startv,steps,channel=No
         pdf.savefig()
         plt.clf()
 
-        plt.plot(setvs,[abs(popt0[2]) for popt0 in popts0],marker='o')
-        plt.xlabel('Set Voltage [V]')
+        plt.plot(xdata,[abs(popt0[2]) for popt0 in popts0],marker='o',markersize=1)
+        plt.xlabel(vol_label)
         plt.ylabel('Equivalent Noise Charge [pC]')
         plt.ylim(0,0.2)
         plt.title('Noise')
         pdf.savefig()
         plt.clf()
 
-        plt.errorbar(setvs, pois_mean, yerr=pois_err, marker='o', linestyle='')
-        plt.xlabel('Set Voltage [V]')
+        plt.errorbar(xdata, pois_mean, yerr=pois_err, marker='o', linestyle='',markersize=1)
+        plt.xlabel(vol_label)
         plt.ylabel('Poisson Mean [p.e.]')
         plt.grid(color='gray',linestyle=':',linewidth=1)
         plt.ylim(0,0.2)
