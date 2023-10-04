@@ -79,6 +79,7 @@ def main():
                        break
             else:
                 led_int_2 = led_int_1
+                qmeans_2 = 0
                 j = 0
             print(qmeans_2)
             this_intensity = led_int_2[j]
