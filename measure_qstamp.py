@@ -114,30 +114,39 @@ def chargestamp_multiple(parser, path, channel=None, doAnalysis=False, fillzero=
 
     i = 0
     prev_setv = 0
+    failure_count = 0
     for i in tqdm(range(len(set_voltages)),desc='Data taking progress'):
         time.sleep(1)
         setv = set_voltages[i]
         led_off(session, ledon)
         #print(f'Set voltage: {setv} V')
         session.setDEggHV(channel,int(setv))
-        led_on(session, options.freq, led_intensity, setLEDon(1,False), ledon)
+        led_on(session, options.freq, led_intensity, setLEDon(options.ledsel,False), ledon)
         for j in (pbar := tqdm(range(int(abs(setv-prev_setv)/50+1)*2),leave=False)):
             pbar.set_description(f"Waiting for setv {setv} V")
             time.sleep(0.5)
+        if failure_count > 0:
+            print(f"Observed voltage check ({setv}V): {session.readSloADC_HVS_Voltage(channel):.3f}V")
         try:
-            datadic = charge_readout(session, options, channel, int(setv), hdfout, fillzero=fillzero, nevents=nevents, debug=debug, fillnan=fillnan, prefat=prefat)
+            datadic, session = charge_readout(parser, session, options, channel, int(setv), hdfout, fillzero=fillzero, nevents=nevents, debug=debug, fillnan=fillnan, prefat=prefat)
         except:
             traceback.print_exc()
             session.close()
             time.sleep(1)
-            session = startIcebootSession(parser)
+            if prefat:
+                session = startIcebootSession(parser, host='localhost', port=5002)
+            else:
+                session = startIcebootSession(parser)
             time.sleep(1)
             session.enableHV(channel)
             prev_setv = 0
+            failure_count += 1
+            print(f"Failure count: {failure_count}")
             continue
         simple_plot_qhist(pdf, datadic)
         prev_setv = setv
         i += 1
+        failure_count = 0
 
     led_off(session, ledon)
     session.endStream()
@@ -164,7 +173,7 @@ def led_off(session, ledon):
     if ledon:
         disableLEDflashing(session)
 
-def charge_readout(session, options, channel, setHV, filename, fillzero=False, nevents=None, debug=False, fillnan=False, prefat=False):
+def charge_readout(parser, session, options, channel, setHV, filename, fillzero=False, nevents=None, debug=False, fillnan=False, prefat=False):
     datadic = dict_init()
     niter = 100
     datadic['hvv'] = [session.readSloADC_HVS_Voltage(channel) for i in range(niter)]
@@ -186,6 +195,7 @@ def charge_readout(session, options, channel, setHV, filename, fillzero=False, n
     datadic['charge'] = []
     datadic['timestamp'] = []
     unitevts = int(1e5)
+    failure_counts = 0
     while remain_nevts > 0:
         if remain_nevts > unitevts:
             evts = unitevts
@@ -195,7 +205,10 @@ def charge_readout(session, options, channel, setHV, filename, fillzero=False, n
             try:
                 block = session.DEggReadChargeBlockFixed(140,155,14*evts,timeout=options.timeout)
             except:
-                traceback.print_exc()
+                if debug:
+                    traceback.print_exc()
+                failure_counts += 1
+                print(f'Timeout! Restart the iceboot session. Failure count: {failure_counts}')
                 session.close()
                 time.sleep(1)
                 if prefat:
@@ -208,6 +221,7 @@ def charge_readout(session, options, channel, setHV, filename, fillzero=False, n
                 for j in (pbar := tqdm(range(int(abs(setHV)/50+1)*2),leave=False)):
                     pbar.set_description(f"Waiting for setv {setHV} V")
                     time.sleep(0.5)
+                print(f"Observed voltage check ({setv}V): {session.readSloADC_HVS_Voltage(channel):.3f}V")
                 continue
         else: 
             try:
@@ -225,6 +239,7 @@ def charge_readout(session, options, channel, setHV, filename, fillzero=False, n
         datadic['charge'].extend(charges_)
         datadic['timestamp'].extend(timestamps_)
         remain_nevts -= unitevts
+        failure_counts = 0
     if fillnan:
         if len(datadic['charge']) < nevents:
             lack = [-100 for i in range(nevents-len(datadic['charge']))]
@@ -234,7 +249,7 @@ def charge_readout(session, options, channel, setHV, filename, fillzero=False, n
         #print(f"observed charge: {datadic['charge']}")
         print(f"observed #chargestamps: {len(datadic['charge'])} out of {nevents}")
     store_hdf(filename, datadic)
-    return datadic
+    return datadic, session
 
 def dict_init():
     return {'hvv':[0],'hvi':[0],'setv':0,'temp':[0],'charge':[0],'timestamp':[0],'pctime':0}

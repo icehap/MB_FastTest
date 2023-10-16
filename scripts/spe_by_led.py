@@ -91,6 +91,7 @@ def main():
         chargestamp_multiple(parser,path,ch,doAnalysis=True,fillzero=True,hvset=hvv,nevents=nevents,led_intensity=this_intensity,debug=options.debug,fillnan=True,analysis_startv=options.startv,prefat=True)
 
     end_time = time.time()
+    print('Running spe_by_led.py is completed correctly.')
     print(f'Duration: {end_time - start_time:.1f} sec')
     with open(f'{path}/log.txt','a') as f:
         f.write(f'\nDuration: {end_time - start_time:.1f} sec')
@@ -157,10 +158,10 @@ def chargestamp_led(parser, path, channel=None, doAnalysis=False, fillzero=False
         led_off(session, True)
         time.sleep(1)
         #print(f'Set voltage: {setv} V')
-        led_on(session, options.freq, led_intensity, setLEDon(1,False), True)
+        led_on(session, options.freq, led_intensity, setLEDon(options.ledsel,False), True)
         time.sleep(1)
         try:
-            datadic = charge_readout(session, options, channel, int(setv), hdfout, fillzero=fillzero, nevents=nevents, debug=debug, fillnan=True, prefat=True)
+            datadic, session = charge_readout(parser, session, options, channel, int(setv), hdfout, fillzero=fillzero, nevents=nevents, debug=debug, fillnan=True, prefat=True)
         except:
             traceback.print_exc()
             session.close()
@@ -203,14 +204,14 @@ def LED_scaning(session, options, setv, led_intensities, channel, hvskip=False):
         hdfout = f'{path}/raw/data_ch{channel}_{led_intensity}.hdf'
         led_off(session, True)
         #print(f'Set voltage: {setv} V')
-        led_on(session, options.freq, led_intensity, setLEDon(1,False), True)
+        led_on(session, options.freq, led_intensity, setLEDon(options.ledsel,False), True)
         try:
-            datadic = charge_readout(session, options, channel, int(setv), hdfout, fillzero=fillzero, nevents=nevents, debug=debug, fillnan=True, prefat=True)
+            datadic, session = charge_readout(parser, session, options, channel, int(setv), hdfout, fillzero=fillzero, nevents=nevents, debug=debug, fillnan=True, prefat=True)
         except:
             traceback.print_exc()
             session.close()
             time.sleep(1)
-            session = startIcebootSession(parser)
+            session = startIcebootSession(parser,host='localhost',port=5002)
             time.sleep(1)
             session.enableHV(channel)
             continue
