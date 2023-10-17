@@ -208,7 +208,7 @@ def charge_readout(parser, session, options, channel, setHV, filename, fillzero=
                 if debug:
                     traceback.print_exc()
                 failure_counts += 1
-                print(f'Timeout! Restart the iceboot session. Failure count: {failure_counts}')
+                print(f'***\nTimeout! Restart the iceboot session. Failure count: {failure_counts}')
                 session.close()
                 time.sleep(1)
                 if prefat:
@@ -221,7 +221,7 @@ def charge_readout(parser, session, options, channel, setHV, filename, fillzero=
                 for j in (pbar := tqdm(range(int(abs(setHV)/50+1)*2),leave=False)):
                     pbar.set_description(f"Waiting for setv {setHV} V")
                     time.sleep(0.5)
-                print(f"Observed voltage check ({setv}V): {session.readSloADC_HVS_Voltage(channel):.3f}V")
+                print(f"***\nObserved voltage check ({setHV}V): {session.readSloADC_HVS_Voltage(channel):.1f}V")
                 continue
         else: 
             try:
