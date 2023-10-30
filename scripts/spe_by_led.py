@@ -13,9 +13,12 @@ import shared_options
 import numpy as np
 import traceback
 
+from icmnet import ICMNet
+
 def main():
     print(datetime.datetime.now())
-    led_int_1 = [int(0x4800) + 2048*i for i in range(8)]
+
+    led_int_1 = [int(0x4800) + 2048*i for i in range(10)]
     start_time = time.time()
 
     parser = getParser()
@@ -33,9 +36,31 @@ def main():
     parser.add_option('--gainfit',action='store_true',default=False)
     parser.add_option('--qmeantarget',default=None)
     parser.add_option('--half',default=None)
+    parser.add_option('--icmport',type=int,default=6000)
     (options,args) = parser.parse_args()
     #print(options,args)
     path = utils.pathSetting(options, 'SPELED', dedicated=f'{options.deggnum}')
+
+    dev = 2
+    MB_PWR_RAIL_WAIT_SEC = 10
+
+    icms = ICMNet(options.icmport, host='localhost')
+    reply = icms.request("read %d fw_vers" % dev)
+    print(reply)
+    fw_ver = int(reply['value'],0)
+
+    if fw_ver < 0x1546:
+        os.system('../fh_icm_api/icm_fpga_reboot.py -w 2 -i2')
+        boot_trial = True
+        while boot_trial:
+            time.sleep(2)
+            try:
+                session = startIcebootSession(parser,host='localhost',port=5002)
+            except: 
+                print('something wrong. try again.')
+            else:
+                session.close()
+                boot_trial = False
 
     if options.hvv is None:
         #hvv = '1300,1400,1500,1600,1700,1800,1900,1950' ## old setting
