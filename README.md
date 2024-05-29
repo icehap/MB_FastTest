@@ -1,18 +1,30 @@
 # MB_FastTest
-Codes for the IceCube-Upgrade D-Egg mainboard Fast-Testing. (supports Rev 3<)
+Code set for the IceCube-Upgrade D-Egg mainboard simple testing (supports mainboard Rev 3<). Here are listed (currently) available scripts, giving simple descriptions, while the detailed docs can be provided in the following sub-sections. 
 
-- The main script: mbfasttest.py includes all testing items. If runing the code, the script takes the data from the mainboard, automatically analyzes the data, and then generates a PDF-format report. 
-Available to use the same options as the iceboot. 
-- Waveform taking: thresSpeCurve.py 
-- Charge stamp taking: Qhist_chargestamp.py
+- `mbfasttest.py`: the main script. It includes all testing items. If runing the script, it takes the data from the mainboard, automatically analyzes them, and then generates a PDF-format report. 
+Available to use the same options as the iceboot (see STM32Tools). 
+- `thresSpeCurve.py`: waveform-based data-taking script. It accepts several trigger settings.  
+- `Qhist_chargestamp.py`: charge-stamp-based data-taking script. It accepts several trigger settings. 
 
-The package WIPACrepo/STM32Tools is required (need access permission). It is not automatically downloaded with the "git clone". Do it manally and put it in the correct path shown below. 
+## Setup
+The packages WIPACrepo/STM32Tools as well as WIPACrepo/fh_icm_api are required (you need access permission to get both). They are not automatically downloaded with the "git clone". Do it manally. The ideal directory structure is shown below:
+```
+$ ls
+MB_FastTest/ Tools/ fh_icm_api/
+```
+Note that the STM32Tools is renamed to Tools in this instruction. 
 
 ### Add the module path to PYTHONPATH: 
 ```
-$ export PYTHONPATH=$PYTHONPATH:[working dir]/MB_FastTest/testitems:[working dir]/tools/python
+$ export PYTHONPATH=$PYTHONPATH:$PWD/MB_FastTest/testitems:$PWD/Tools/python:$PWD/fh_icm_api
 ```
-This is automatically set by running setup.sh. 
+Or, you just run setup.sh: 
+```
+$ cd MB_FastTest
+$ source setup.sh
+```
+
+## Running scripts
 
 ### Run the main fast-test script: 
 ```
